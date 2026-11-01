@@ -1,0 +1,17 @@
+# 앱에 필요한 파일만 올린다. 이 폴더에 다른 파일(개인 서류 등)이 들어와도 GitHub에 올라가지 않게
+# 모두 막아 두고, 아래 목록만 허용한다. 새 파일을 올려야 하면 여기에 추가한다.
+/*
+!/.gitignore
+!/index.html
+!/sw.js
+!/manifest.webmanifest
+!/firebase-config.js
+!/firestore.rules
+!/icon.svg
+!/icon-180.png
+!/icon-192.png
+!/icon-512.png
+!/art/
+/art/*
+!/art/boogi.png
+!/art/penguin.png

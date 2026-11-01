@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>에그부기</title>
+<meta name="description" content="책을 읽으면 알이 자라는 독서 기록 키오스크">
+<meta name="theme-color" content="#cfeef0">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="에그부기">
+<!-- 글꼴: 제목은 주아, 본문은 나눔스퀘어라운드. 인터넷이 없으면 기기 글꼴로 대신한다. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+<link rel="stylesheet" href="https://hangeul.pstatic.net/hangeul_static/css/nanum-square-round.css">
+<style>
+:root{
+  --ink:#23395b;--muted:#6b7f95;--line:#e3ece8;--card:#fff;--cream:#fff8ec;
+  --teal:#4fb7ac;--teal-d:#2f9488;--teal-l:#e3f5f2;
+  --orange:#f5994a;--orange-d:#d97a2b;--orange-l:#fff1e2;
+  --red:#e8685a;--shadow:0 10px 30px rgba(35,57,91,.08);
+  --title:"Jua","NanumSquareRound","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  color-scheme:light
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#eaf7f2;color:var(--ink);font-family:"NanumSquareRound","Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;-webkit-tap-highlight-color:transparent;min-height:100vh;line-height:1.55;font-weight:700}
+button{font:inherit;color:inherit;cursor:pointer}
+input,textarea,select{font:inherit;font-weight:700;color:inherit;border:2px solid var(--line);border-radius:16px;padding:12px 14px;background:#fbfdfc;width:100%}
+input:focus,textarea:focus,select:focus{outline:3px solid #bfe7e1;border-color:var(--teal)}
+label{display:block;margin:14px 0 4px;font-weight:800}
+label input,label textarea,label select{margin-top:6px}
+h1,h2,h3{font-family:var(--title);font-weight:400;letter-spacing:-.2px;margin:0 0 12px}
+h2{font-size:28px}
+h3{font-size:22px}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+
+/* 배경: 하늘과 겹겹이 둥근 언덕 */
+.scene{position:fixed;inset:0;z-index:-1;pointer-events:none}
+.scene svg{width:100%;height:100%;display:block}
+
+/* 위: 로고 · 아이 이름 · 관리 */
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;margin:0 auto;max-width:1140px;padding:10px 16px;padding-top:max(10px,env(safe-area-inset-top))}
+.top-inner{display:flex;align-items:center;gap:12px;flex:1;min-width:0;background:rgba(255,255,255,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:999px;padding:8px 10px 8px 14px;box-shadow:var(--shadow)}
+.brand{border:0;background:none;padding:0;transition:transform .15s;display:flex;align-items:center;gap:6px;font-family:var(--title);font-size:26px;color:var(--ink);white-space:nowrap;line-height:1}
+.brand span b{color:var(--orange);font-weight:400}
+.brand img{width:46px;height:38px;object-fit:contain}
+.brand:active{transform:scale(.94)}
+.kids{display:flex;gap:8px;overflow-x:auto;flex:1;padding:4px 2px;scrollbar-width:none}
+.kids::-webkit-scrollbar{display:none}
+.kid{border:0;background:#f2f6f5;border-radius:999px;padding:5px 16px 5px 5px;font-family:var(--title);font-size:19px;white-space:nowrap;display:flex;gap:8px;align-items:center;transition:transform .15s,background .15s}
+.kid .ava{width:34px;height:34px;border-radius:50%;background:var(--c);color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
+.kid.on{background:#fff;box-shadow:0 0 0 3px var(--c)}
+.kid:active{transform:scale(.95)}
+.kid.big{font-size:26px;padding:8px 26px 8px 8px}
+.kid.big .ava{width:56px;height:56px;font-size:26px}
+.gear{border:0;background:#f2f6f5;border-radius:50%;width:46px;height:46px;font-size:21px;flex:none}
+
+/* 가운데 알약 모양 탭 */
+.tabs{display:flex;gap:6px;max-width:560px;width:calc(100% - 32px);margin:4px auto 0;padding:6px;background:rgba(255,255,255,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:999px;box-shadow:var(--shadow)}
+.tabs[hidden]{display:none}
+.tabs button{flex:1;border:0;border-radius:999px;padding:12px 8px;font-family:var(--title);font-size:20px;background:transparent;color:var(--muted);transition:background .2s,color .2s}
+.tabs button.on{background:var(--teal);color:#fff;box-shadow:0 4px 0 var(--teal-d)}
+main{max-width:1140px;margin:0 auto;padding:18px 16px 120px}
+.view{animation:fadeUp .35s ease-out}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.panel{background:var(--card);border-radius:30px;padding:24px;box-shadow:var(--shadow);margin-bottom:18px}
+
+.btn{border:0;border-radius:999px;padding:12px 22px;font-family:var(--title);font-size:18px;background:#eef3f2;color:var(--ink);box-shadow:0 4px 0 #d6e0dd;transition:transform .1s,box-shadow .1s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #d6e0dd}
+.btn.primary{background:var(--teal);color:#fff;box-shadow:0 5px 0 var(--teal-d)}
+.btn.primary:active{box-shadow:0 2px 0 var(--teal-d)}
+.btn.accent{background:var(--orange);color:#fff;box-shadow:0 5px 0 var(--orange-d)}
+.btn.accent:active{box-shadow:0 2px 0 var(--orange-d)}
+.btn.danger{background:#fdecea;color:var(--red);box-shadow:0 4px 0 #f5d2cd}
+.btn.big{font-size:23px;padding:16px 34px}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.hello{font-family:var(--title);font-size:28px}
+.hello .who{color:var(--c)}
+.empty{padding:36px 16px;text-align:center;color:var(--muted);font-size:18px}
+
+/* 처음 화면 */
+.welcome{text-align:center;padding:10px 16px 0}
+.welcome-art{width:min(300px,70vw);margin:0 auto;animation:bob 3s ease-in-out infinite}
+.welcome-art img{width:100%;filter:drop-shadow(0 12px 10px rgba(35,57,91,.18))}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.logo-big{font-size:clamp(48px,9vw,76px);line-height:1.05;margin:6px 0 10px}
+.logo-big span{color:var(--orange)}
+.lead{font-size:20px;margin:0 auto 22px;max-width:480px}
+.welcome .note{margin-top:16px}
+
+/* 내 책장 */
+.chips{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 12px;scrollbar-width:none}
+.chip{border:0;background:#f2f6f5;border-radius:999px;padding:10px 18px;font-family:var(--title);font-size:18px;white-space:nowrap;color:var(--muted)}
+.chip.on{background:var(--ink);color:#fff}
+.chip small{opacity:.75;font-size:15px}
+.progress{height:18px;background:#eef3f2;border-radius:99px;overflow:hidden}
+.progress>div{height:100%;background:linear-gradient(90deg,#ffc58a,var(--orange));border-radius:99px;transition:width .6s}
+.prog-label{display:flex;justify-content:space-between;margin:8px 2px 16px;color:var(--muted)}
+.prog-label b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px}
+.tile{position:relative;overflow:hidden;min-height:150px;border:0;background:#fff;border-radius:20px;padding:14px 12px 12px 24px;text-align:left;display:flex;flex-direction:column;gap:6px;box-shadow:0 4px 0 #e6ece9,0 8px 18px rgba(35,57,91,.06);transition:transform .12s}
+.tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:11px;background:#e3ece8}
+.tile:active{transform:translateY(3px)}
+.tile .no{font-family:var(--title);font-size:30px;line-height:1;color:#b8c6d2}
+.tile .tt{font-size:15px;line-height:1.4;color:var(--muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tile.done{background:var(--orange-l)}
+.tile.done::before{background:var(--orange)}
+.tile.done .no{color:var(--ink)}
+.tile.done .tt{color:var(--ink)}
+.stamp{position:absolute;bottom:10px;right:10px;width:50px;height:50px;border-radius:50%;border:3px solid var(--orange-d);color:var(--orange-d);display:flex;align-items:center;justify-content:center;font-family:var(--title);font-size:15px;transform:rotate(-14deg);background:rgba(255,255,255,.7)}
+.meta{margin-top:auto;font-size:13px;color:var(--orange-d)}
+.st{color:#ffb020;letter-spacing:1px}.st i{color:#dfe6e3;font-style:normal}
+.list{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:center;border:0;background:#f7faf9;border-radius:18px;padding:14px 18px;text-align:left}
+
+/* 알·친구 카드 */
+.pcard{position:relative;background:#fff;border-radius:28px;padding:26px 18px 18px;text-align:center;box-shadow:0 10px 24px rgba(35,57,91,.1);width:230px;flex:none}
+.pcard.big{width:min(330px,100%)}
+.pcard .art{height:160px;display:flex;align-items:center;justify-content:center}
+.pcard.big .art{height:210px}
+.pcard .art svg,.pcard .art img{width:100%;height:100%;object-fit:contain}
+.pcard .art img{filter:drop-shadow(0 6px 6px rgba(35,57,91,.15))}
+.pcard.locked{opacity:.6;box-shadow:none;border:3px dashed #d5dfdb;background:rgba(255,255,255,.6)}
+.seg{position:absolute;display:block}
+.seg.top{top:0;left:0;right:0;height:13px;border-radius:28px 28px 0 0}
+.seg.bottom{bottom:0;left:0;right:0;height:13px;border-radius:0 0 28px 28px}
+.seg.left{left:0;top:13px;bottom:13px;width:13px}
+.seg.right{right:0;top:13px;bottom:13px;width:13px}
+.seg.emblem{top:-12px;left:-12px;width:44px;height:44px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--title);font-size:19px;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.cap b{display:block;font-family:var(--title);font-weight:400;font-size:22px}
+.cap small{color:var(--muted);font-size:14px}
+.gauge{height:16px;background:#eef3f2;border-radius:99px;overflow:hidden;margin:10px 0}
+.gauge i{display:block;height:100%;background:linear-gradient(90deg,#ffd36e,var(--orange));border-radius:99px}
+.crown{position:absolute;top:-36px;left:50%;transform:translateX(-50%);width:62px}
+.wing{position:absolute;top:38%;width:46px}
+.wing.l{left:-38px}.wing.r{right:-38px;transform:scaleX(-1)}
+.pcard.t5{box-shadow:0 10px 34px rgba(197,139,255,.45)}
+.wobble{animation:wob 1.3s ease-in-out infinite;transform-origin:50% 92%}
+@keyframes wob{0%,100%{transform:rotate(0)}25%{transform:rotate(-7deg)}75%{transform:rotate(7deg)}}
+.glow{filter:drop-shadow(0 0 12px #ffd84d)}
+.hero{display:flex;gap:34px;align-items:center;flex-wrap:wrap;justify-content:center;padding:8px 0}
+.hero-info{max-width:400px}
+.hero-info p{font-size:18px}
+.today-left{display:inline-flex;align-items:center;gap:8px;background:var(--teal-l);color:var(--teal-d);border-radius:999px;padding:8px 16px}
+.shelf-pets{display:flex;gap:46px;flex-wrap:wrap;padding:24px 40px 6px;justify-content:center}
+.ladder{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+.ladder span{display:flex;align-items:center;gap:6px;background:#f7faf9;border-radius:999px;padding:5px 12px;font-size:14px}
+.ladder i{width:16px;height:16px;border-radius:50%;display:inline-block}
+
+/* 창 */
+.modal{position:fixed;inset:0;background:rgba(35,57,91,.4);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px;animation:fade .2s}
+.modal[hidden]{display:none}
+@keyframes fade{from{opacity:0}}
+.sheet{background:#fff;border-radius:32px;padding:24px;width:min(540px,100%);max-height:92vh;overflow:auto;overflow-x:hidden;position:relative;animation:rise .3s cubic-bezier(.2,1.3,.4,1)}
+@keyframes rise{from{transform:translateY(30px) scale(.96);opacity:0}}
+.book-title{font-family:var(--title);font-size:22px;background:var(--orange-l);border-radius:18px;padding:12px 16px;margin:0 0 4px}
+.stars{display:flex;gap:4px}
+.stars button{border:0;background:none;font-size:48px;line-height:1;color:#e3e9e6;padding:2px;transition:transform .15s}
+.stars button.on{color:#ffb020;transform:scale(1.08)}
+.hint{color:var(--red);min-height:1.5em;margin:8px 0}
+.hint.soft{color:var(--orange-d)}
+.actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:8px}
+.celebrate{text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;overflow:hidden;padding:36px 40px 8px;margin:-24px -24px 0;background:linear-gradient(180deg,var(--teal-l),#fff 60%)}
+.celebrate .pcard{animation:pop .7s cubic-bezier(.2,1.6,.4,1)}
+.celebrate p{font-size:19px;margin:0}
+@keyframes pop{0%{transform:scale(.4);opacity:0}100%{transform:scale(1);opacity:1}}
+.confetti{position:absolute;inset:0;pointer-events:none}
+.confetti i{position:absolute;top:-20px;width:10px;height:16px;border-radius:3px;animation:fall 2.2s ease-in forwards}
+@keyframes fall{to{transform:translateY(600px) rotate(540deg);opacity:0}}
+
+/* 관리 비밀번호 */
+.pin-dots{display:flex;gap:16px;justify-content:center;margin:12px 0 20px}
+.pin-dots i{width:22px;height:22px;border-radius:50%;border:3px solid var(--teal);display:block}
+.pin-dots i.on{background:var(--teal)}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:310px;margin:0 auto}
+.pad button{border:0;background:#f2f6f5;border-radius:999px;font-family:var(--title);font-size:30px;padding:12px 0;box-shadow:0 4px 0 #dde6e3}
+.pad button:active{transform:translateY(3px);box-shadow:0 1px 0 #dde6e3}
+.shake{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-10px)}40%,80%{transform:translateX(10px)}}
+
+/* 성장 노트 */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
+.stat{background:#f7faf9;border-radius:22px;padding:16px 18px}
+.stat b{display:block;font-family:var(--title);font-weight:400;font-size:38px;color:var(--teal-d);line-height:1.2}
+.stat:nth-child(2) b{color:var(--orange-d)}
+.bars{display:flex;align-items:flex-end;gap:14px;height:170px;padding:10px 4px 0;border-bottom:2px solid var(--line)}
+.bars div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;font-size:14px}
+.bars span{width:100%;max-width:56px;background:linear-gradient(180deg,#7fd3c9,var(--teal));border-radius:14px 14px 4px 4px;min-height:4px}
+.bar-labels{display:flex;gap:14px;padding:6px 4px}
+.bar-labels span{flex:1;text-align:center;font-size:13px;color:var(--muted)}
+.grass{display:grid;grid-template-rows:repeat(7,16px);grid-auto-flow:column;grid-auto-columns:16px;gap:4px;overflow-x:auto;padding:4px 0}
+.grass i{border-radius:5px;background:#eef3f2}
+.grass i.l1{background:#c9ecd0}.grass i.l2{background:#8fd39f}.grass i.l3{background:#4caf6a}
+.grass i.future{background:transparent}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.quote{background:#f7faf9;border-radius:20px;padding:16px}
+.quote small{color:var(--muted);display:block;margin-bottom:4px}
+.colprog{display:grid;grid-template-columns:minmax(120px,220px) 1fr auto;gap:12px;align-items:center;margin:8px 0}
+
+/* 관리 */
+.admin-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:18px;align-items:start}
+.admin-grid .panel{margin:0}
+.arow{display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap}
+.arow input{flex:1;min-width:140px;width:auto}
+.arow b{flex:1}
+.dot{width:16px;height:16px;border-radius:50%;display:inline-block;flex:none}
+.warn{background:#fff4d6;border-radius:20px;padding:14px 18px;margin:10px 0}
+.loglist{max-height:380px;overflow:auto}
+
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(140px);background:var(--ink);color:#fff;padding:14px 24px;border-radius:999px;transition:transform .3s;z-index:30;max-width:90vw;text-align:center}
+#toast.on{transform:translateX(-50%) translateY(0)}
+
+@media (max-width:700px){
+  .brand span{display:none}
+  .tabs button{font-size:17px;padding:10px 4px}
+  .compare{grid-template-columns:1fr}
+  .colprog{grid-template-columns:1fr auto}
+  .colprog .progress{grid-column:1/-1;grid-row:2}
+  .shelf-pets{padding:24px 10px 6px}
+  .panel{padding:18px;border-radius:24px}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+}
+@media print{
+  .scene,.top,.tabs,.no-print,#toast{display:none!important}
+  body{background:#fff}
+  .panel{box-shadow:none;border:1px solid #ddd}
+}
+</style>
+</head>
+<body>
+<div class="scene" aria-hidden="true">
+  <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMax slice">
+    <defs>
+      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#cdecef"/><stop offset=".55" stop-color="#e9f7f3"/><stop offset="1" stop-color="#f5fbef"/>
+      </linearGradient>
+    </defs>
+    <rect width="1440" height="900" fill="url(#sky)"/>
+    <g fill="#fff" opacity=".85">
+      <ellipse cx="210" cy="150" rx="70" ry="24"/><ellipse cx="260" cy="132" rx="50" ry="28"/><ellipse cx="170" cy="140" rx="40" ry="20"/>
+      <ellipse cx="1130" cy="110" rx="80" ry="24"/><ellipse cx="1180" cy="92" rx="52" ry="28"/>
+      <ellipse cx="760" cy="215" rx="54" ry="16"/><ellipse cx="790" cy="203" rx="34" ry="18"/>
+    </g>
+    <path d="M0 560 Q 240 470 480 540 T 960 520 T 1440 490 V900 H0Z" fill="#d3e9c9"/>
+    <g fill="#bcdcb2">
+      <circle cx="330" cy="505" r="18"/><circle cx="352" cy="512" r="13"/><rect x="328" y="512" width="5" height="18" rx="2"/>
+      <circle cx="1060" cy="498" r="20"/><circle cx="1086" cy="506" r="14"/><rect x="1058" y="506" width="5" height="18" rx="2"/>
+      <circle cx="1240" cy="482" r="15"/>
+    </g>
+    <path d="M0 650 Q 300 548 640 626 T 1440 596 V900 H0Z" fill="#b9dca1"/>
+    <path d="M940 900 C 900 820 760 780 820 720 C 860 680 780 650 720 628" stroke="#f4e8c9" stroke-width="34" fill="none" stroke-linecap="round"/>
+    <path d="M0 772 Q 380 664 780 746 T 1440 724 V900 H0Z" fill="#a3d08a"/>
+    <g>
+      <circle cx="160" cy="800" r="6" fill="#fff"/><circle cx="168" cy="808" r="4" fill="#ffd36e"/>
+      <circle cx="1280" cy="790" r="6" fill="#fff"/><circle cx="1290" cy="800" r="4" fill="#ffb6c1"/>
+      <circle cx="560" cy="830" r="5" fill="#fff"/><circle cx="1120" cy="850" r="5" fill="#ffd36e"/>
+    </g>
+  </svg>
+</div>
+
+<header class="top">
+  <div class="top-inner">
+    <button class="brand" id="brand" data-act="home" aria-label="처음 화면으로"></button>
+    <nav class="kids" id="kids" aria-label="아이 고르기"></nav>
+    <button class="gear" data-act="admin" aria-label="보호자·선생님 관리">⚙️</button>
+  </div>
+</header>
+<nav class="tabs" id="tabs">
+  <button data-tab="shelf">📚 내 책장</button>
+  <button data-tab="pets">🥚 알·친구</button>
+  <button data-tab="note">🌱 성장 노트</button>
+</nav>
+<main id="main"></main>
+<div class="modal" id="modal" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+<div id="toast" role="status"></div>
+
+<script src="firebase-config.js"></script>
+<script type="module">
+'use strict';
+// 에그부기 1단계: 서버 없이 이 기기의 브라우저 저장소(localStorage)에만 기록한다.
+const KEY = 'eggbugi.v1';
+const PER_PET = 30;
+// 첫 알에서는 늘 주인공 거북이 부기가 태어난다. 앞 친구가 다이아몬드가 되면 다음 알이 열린다.
+// 모두 알에서 태어나는 동물로 고른다. 이름은 받침 없이 끝내야 '○○가' 같은 문구가 자연스럽다.
+const PETS = [
+  { key: 'turtle', name: '부기', kind: '거북이' },
+  { key: 'penguin', name: '펭구', kind: '아기 펭귄' },
+  { key: 'dino', name: '디노', kind: '아기 공룡' },
+];
+const TIERS = [
+  { name: '나무', bg: 'repeating-linear-gradient(45deg,#9c6d36 0 6px,#be8f55 6px 12px)' },
+  { name: '브론즈', bg: 'linear-gradient(135deg,#8a4b1f,#e0a06a,#8a4b1f)' },
+  { name: '실버', bg: 'linear-gradient(135deg,#8d99a6,#f4f7fa,#8d99a6)' },
+  { name: '골드', bg: 'linear-gradient(135deg,#b8860b,#ffe27a,#b8860b)' },
+  { name: '플래티넘', bg: 'linear-gradient(135deg,#0f8f74,#a6f5df,#0f8f74)' },
+  { name: '다이아몬드', bg: 'linear-gradient(135deg,#ff7aa2,#ffd36e,#7ee8a5,#7ab8ff,#c58bff)' },
+];
+const KID_COLORS = ['#f5994a', '#4fb7ac', '#7a8fe0', '#e57fa8', '#8cc152', '#b48cdc', '#f2b33d', '#5aa9e6'];
+
+const $ = selector => document.querySelector(selector);
+const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
+const pad2 = n => String(n).padStart(2, '0');
+const ymd = d => d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+const today = () => ymd(new Date());
+
+// ---------- 저장 ----------
+function fresh() {
+  return { version: 1, pin: '0000', settings: { dailyCap: 5, minReview: 0 }, profiles: [], collections: [], logs: [], ui: {} };
+}
+function load() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY));
+    if (valid(saved)) return saved;
+  } catch (error) { /* 비어 있거나 깨진 저장소는 새로 시작한다 */ }
+  return fresh();
+}
+function valid(data) {
+  return !!data && data.version === 1 && typeof data.pin === 'string' && Array.isArray(data.profiles) && Array.isArray(data.collections) && Array.isArray(data.logs);
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch (error) { toast('저장하지 못했어요. ⚙️ 관리에서 백업을 먼저 받아 두세요.'); }
+}
+
+let S = load();
+S.settings = Object.assign({ dailyCap: 5, minReview: 0 }, S.settings);
+S.ui = S.ui || {};
+const view = { tab: 'shelf', admin: false, logKid: null };
+// 아이패드 사파리는 오래 안 쓴 사이트의 저장소를 지울 수 있어서, 지우지 말아 달라고 한 번 요청한다.
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+// ---------- 기록 계산 ----------
+const kid = () => S.profiles.find(p => p.id === S.ui.kid) || null;
+const kidLogs = id => S.logs.filter(l => l.profileId === id);
+const rewardCount = id => S.logs.filter(l => l.profileId === id && l.rewarded).length;
+// 하루 한도는 기록한 날(createdAt) 기준이다. 읽은 날짜는 고칠 수 있어서 한도 계산에 쓰지 않는다.
+const rewardedToday = id => S.logs.filter(l => l.profileId === id && l.rewarded && ymd(new Date(l.createdAt)) === today()).length;
+const setLog = (kidId, colId, no) => S.logs.find(l => l.profileId === kidId && l.type === 'set' && l.collectionId === colId && l.bookNo === no);
+const bookName = b => b.title || b.no + '권';
+
+// 알 성장은 저장하지 않고 '알이 자란 기록 수'로 매번 계산한다. 기록을 지우면 성장도 저절로 되돌아간다.
+function petStates(count) {
+  return PETS.map((pet, i) => ({ pet, n: Math.max(0, Math.min(PER_PET, count - i * PER_PET)) }));
+}
+// 지금 보여 줄 친구: 자라기 시작한 마지막 친구. 부기가 막 다이아몬드가 됐을 때는 아직 새 알이 아니라 부기다.
+function activePet(count) {
+  const states = petStates(count);
+  return states.filter(s => s.n > 0).pop() || states[0];
+}
+function tierOf(n) {
+  const t = Math.min(5, Math.floor((n - 5) / 5));
+  return { t, seg: n >= PER_PET ? 0 : (n - 5) % 5, next: Math.min(5, t + 1) };
+}
+
+// ---------- 그림 ----------
+function hex(cx, cy, r, fill, stroke = '#2f7a55') {
+  const points = [0, 1, 2, 3, 4, 5].map(i => {
+    const a = Math.PI / 3 * i + Math.PI / 6;
+    return (cx + r * Math.cos(a)).toFixed(1) + ',' + (cy + r * Math.sin(a)).toFixed(1);
+  }).join(' ');
+  return `<polygon points="${points}" fill="${fill}" stroke="${stroke}" stroke-width="3"/>`;
+}
+function eggSVG(key, stage) {
+  // 거북이 알 무늬는 부기 등딱지(주황·갈색 육각)를 미리 보여 준다.
+  // 펭귄 알은 차가운 바다 물결과 검은 점(펭구 몸 색)을 보여 준다.
+  const colors = { turtle: ['#8a5a2b', '#f0a24e'], penguin: ['#3d4352', '#8fcdf0'], dino: ['#6bbf3a', '#f6c443'] };
+  let deco = '';
+  if (!key) deco = '<text x="60" y="100" text-anchor="middle" font-size="46" font-weight="900" fill="#c9d3cf">?</text>';
+  else if (stage >= 2) {
+    const [c1, c2] = colors[key];
+    if (key === 'turtle') deco = hex(60, 74, 13, c2, c1) + hex(36, 98, 9, c2, c1) + hex(84, 98, 9, c2, c1) + hex(60, 116, 8, c2, c1);
+    else if (key === 'dino') deco = [[42, 62, 8], [78, 70, 10], [52, 98, 9], [86, 104, 7], [64, 122, 5]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c1}" opacity=".85"/>`).join('');
+    else deco = [96, 116].map(y => `<path d="M16 ${y} q11 -8 22 0 t22 0 t22 0 t22 0" stroke="${c2}" stroke-width="6" fill="none" stroke-linecap="round"/>`).join('')
+      + [[46, 58, 6], [74, 66, 8], [58, 80, 5]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c1}"/>`).join('');
+  }
+  const crackPath = 'M16 70 l12 10 l10 -9 l11 12 l10 -10 l11 11 l10 -9 l12 8';
+  const crack = stage >= 4 ? `<path d="${crackPath}" stroke="#ffd84d" stroke-width="10" fill="none" stroke-linejoin="round" opacity=".9"/><path d="${crackPath}" stroke="#7a5a2a" stroke-width="3" fill="none" stroke-linejoin="round"/>` : '';
+  return `<svg class="${stage >= 3 ? 'wobble' : ''} ${stage >= 4 ? 'glow' : ''}" viewBox="0 0 120 140" width="120" height="140">`
+    + `<path d="M60 6 C94 6 114 62 114 90 C114 120 90 136 60 136 C30 136 6 120 6 90 C6 62 26 6 60 6Z" fill="${key ? '#fffaf0' : '#f2f5f4'}" stroke="${key ? '#ecdcbc' : '#d5dfdb'}" stroke-width="3"/>`
+    + deco + crack + '<ellipse cx="40" cy="42" rx="9" ry="15" fill="#fff" opacity=".85" transform="rotate(20 40 42)"/></svg>';
+}
+// 주인공 부기는 사용자가 만든 그림(art/boogi.png, 긴 쪽 640px 투명 PNG)을 쓴다. 원본은 art/boogi-original.png.
+function turtleSVG() {
+  return '<img src="art/boogi.png" alt="거북이 부기" draggable="false">';
+}
+// 두 번째 친구 펭구: 사용자가 만든 그림(art/penguin.png, 긴 쪽 640px 투명 PNG). 원본은 art/penguin-original.png.
+function penguinSVG() {
+  return '<img src="art/penguin.png" alt="아기 펭귄 펭구" draggable="false">';
+}
+function dinoSVG() {
+  return '<svg viewBox="0 0 160 140" width="160" height="140" role="img" aria-label="아기 공룡 디노">'
+    + '<ellipse cx="80" cy="128" rx="54" ry="7" fill="#000" opacity=".08"/>'
+    + '<path d="M44 100 Q12 106 8 84 Q24 96 48 88Z" fill="#6bbf3a"/>'
+    + '<path d="M50 72 l8 -18 l8 14 l8 -18 l8 14 l8 -16 l6 18Z" fill="#f6c443"/>'
+    + '<rect x="56" y="112" width="15" height="16" rx="7" fill="#5aa62f"/><rect x="90" y="112" width="15" height="16" rx="7" fill="#5aa62f"/>'
+    + '<ellipse cx="78" cy="94" rx="40" ry="32" fill="#6bbf3a"/>'
+    + '<ellipse cx="86" cy="104" rx="22" ry="18" fill="#c9eea0"/>'
+    + '<circle cx="116" cy="62" r="24" fill="#6bbf3a"/>'
+    + '<circle cx="123" cy="56" r="5" fill="#1f2a24"/><circle cx="124.6" cy="54.4" r="1.7" fill="#fff"/>'
+    + '<circle cx="130" cy="69" r="4" fill="#ff9aa2" opacity=".75"/>'
+    + '<path d="M118 72 q8 6 16 0" stroke="#1f2a24" stroke-width="2.5" fill="none" stroke-linecap="round"/>'
+    + '<path d="M104 92 q8 2 11 -5" stroke="#5aa62f" stroke-width="7" stroke-linecap="round" fill="none"/></svg>';
+}
+const CREATURES = { turtle: turtleSVG, penguin: penguinSVG, dino: dinoSVG };
+const WING = '<svg class="wing {side}" viewBox="0 0 50 40"><path d="M48 20 C30 0 8 2 2 8 C12 12 6 16 2 20 C12 22 8 28 4 32 C20 38 38 34 48 20Z" fill="#bff5e6" stroke="#1fa58a" stroke-width="2"/></svg>';
+const CROWN = '<svg class="crown" viewBox="0 0 60 40"><path d="M6 34 L4 10 L18 22 L30 4 L42 22 L56 10 L54 34Z" fill="#ffd36e" stroke="#c99a1a" stroke-width="2.5" stroke-linejoin="round"/><circle cx="30" cy="25" r="4" fill="#ff7aa2"/></svg>';
+
+// 테두리는 위 → 오른쪽 → 아래 → 왼쪽 → 동그란 엠블럼 다섯 조각. 다섯째 조각을 채우는 순간이 승급이다.
+function petCard(pet, n, big = false) {
+  const size = big ? ' big' : '';
+  if (n <= 0) return `<div class="pcard locked${size}"><div class="art">${eggSVG(null, 0)}</div><div class="cap"><b>???</b><small>아직 잠긴 알</small></div></div>`;
+  if (n < 5) return `<div class="pcard${size}"><div class="art">${eggSVG(pet.key, n)}</div><div class="gauge"><i style="width:${n * 20}%"></i></div><div class="cap"><b>신비한 알</b><small>부화까지 ${5 - n}권 (${n}/5)</small></div></div>`;
+  const { t, seg, next } = tierOf(n);
+  const segs = ['top', 'right', 'bottom', 'left', 'emblem'].map((side, i) =>
+    `<i class="seg ${side}" style="background:${(i < seg ? TIERS[next] : TIERS[t]).bg}">${side === 'emblem' ? t + 1 : ''}</i>`).join('');
+  const extra = (t >= 4 ? WING.replace('{side}', 'l') + WING.replace('{side}', 'r') : '') + (t >= 5 ? CROWN : '');
+  const left = n < PER_PET ? ` · ${TIERS[next].name}까지 ${5 - seg}권` : ' · 최고 등급!';
+  return `<div class="pcard t${t}${size}">${segs}${extra}<div class="art">${CREATURES[pet.key]()}</div><div class="cap"><b>${pet.kind} ${pet.name}</b><small>Lv.${t + 1} ${TIERS[t].name}${left}</small></div></div>`;
+}
+const stars = n => `<span class="st">${'★'.repeat(n)}<i>${'★'.repeat(5 - n)}</i></span>`;
+const kidButton = (p, big = false) =>
+  `<button class="kid${p.id === S.ui.kid && !big ? ' on' : ''}${big ? ' big' : ''}" style="--c:${p.color}" data-act="kid" data-id="${p.id}"><span class="ava">${esc([...p.nickname][0] || '?')}</span>${esc(p.nickname)}</button>`;
+const who = k => `<span class="who" style="--c:${k.color}">${esc(k.nickname)}</span>`;
+
+// ---------- 온라인 저장(Firebase) ----------
+// firebase-config.js 에 설정이 있으면 보호자 구글 계정으로 로그인해 기록을 온라인(Firestore)에 저장한다.
+// 설정이 없으면 예전처럼 이 기기에만 저장한다. 데이터 모양:
+//   families/{보호자 uid}            : 아이·전집·규칙·관리 비밀번호
+//   families/{보호자 uid}/logs/{id} : 읽은 책 기록 한 건씩 (두 기기에서 동시에 기록해도 서로 덮어쓰지 않게)
+const FIREBASE_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
+const cloud = { on: !!window.EGGBUGI_FIREBASE, ready: false, failed: false, user: null, fs: null, authMod: null, auth: null, db: null, unsub: [] };
+const cloudBlocked = () => cloud.on && (!cloud.ready || cloud.failed || !cloud.user);
+
+async function startCloud() {
+  if (!cloud.on) return;
+  cloud.failed = false;
+  try {
+    const [appMod, authMod, fs] = await Promise.all(['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js'].map(f => import(FIREBASE_SDK + f)));
+    const app = appMod.initializeApp(window.EGGBUGI_FIREBASE);
+    cloud.fs = fs; cloud.authMod = authMod;
+    // 인터넷이 잠깐 끊겨도 기록은 기기에 쌓였다가 연결되면 올라간다.
+    cloud.db = fs.initializeFirestore(app, { ignoreUndefinedProperties: true, localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) });
+    cloud.auth = authMod.getAuth(app);
+    authMod.getRedirectResult(cloud.auth).catch(() => {});
+    authMod.onAuthStateChanged(cloud.auth, user => {
+      cloud.unsub.forEach(stop => stop()); cloud.unsub = [];
+      cloud.user = user; cloud.ready = true;
+      if (user) listen(user.uid);
+      render();
+    });
+  } catch (error) {
+    cloud.failed = true; cloud.ready = true; render();
+  }
+}
+const familyRef = () => cloud.fs.doc(cloud.db, 'families', cloud.user.uid);
+const logRef = id => cloud.fs.doc(familyRef(), 'logs', id);
+const meta = () => ({ pin: S.pin, settings: S.settings, profiles: S.profiles, collections: S.collections, updatedAt: Date.now() });
+const cloudFailed = () => toast('온라인 저장에 실패했어요. 인터넷을 확인해 주세요.');
+function pushMeta() { if (cloud.user) cloud.fs.setDoc(familyRef(), meta()).catch(cloudFailed); }
+function pushLog(log) { if (cloud.user) cloud.fs.setDoc(logRef(log.id), log).catch(cloudFailed); }
+function dropLog(id) { if (cloud.user) cloud.fs.deleteDoc(logRef(id)).catch(cloudFailed); }
+// 백업 불러오기·첫 로그인 옮기기처럼 통째로 바꿀 때. 한 번에 400건씩 나눠 쓴다.
+async function pushAll(removeIds = []) {
+  if (!cloud.user) return;
+  const ops = [b => b.set(familyRef(), meta())]
+    .concat(removeIds.map(id => b => b.delete(logRef(id))))
+    .concat(S.logs.map(l => b => b.set(logRef(l.id), l)));
+  for (let i = 0; i < ops.length; i += 400) {
+    const batch = cloud.fs.writeBatch(cloud.db);
+    ops.slice(i, i + 400).forEach(op => op(batch));
+    await batch.commit();
+  }
+}
+
+function listen(uid) {
+  const { onSnapshot, collection } = cloud.fs;
+  // 이 기기가 이 계정과 처음 만나는데 기기 안에 기록이 있으면, 온라인 기록으로 바꾸기 전에 사본을 남겨 둔다.
+  let localCopy = S.ui.cloudUid !== uid && (S.logs.length || S.profiles.length) ? JSON.stringify(S) : null;
+  let lastLogs = null;
+  // 기록 목록은 이 계정의 가족 문서를 확인한 뒤에만 받아들인다(첫 로그인 때 기기 기록을 빈 목록으로 덮지 않게).
+  const applyLogs = () => {
+    if (!lastLogs || S.ui.cloudUid !== uid) return;
+    S.logs = lastLogs.docs.map(x => x.data());
+    save();
+    if (!lastLogs.metadata.hasPendingWrites) render();
+  };
+  cloud.unsub.push(onSnapshot(familyRef(), snap => {
+    if (!snap.exists()) {
+      // 이 계정의 첫 로그인: 이 기기에 있던 기록을 그대로 온라인으로 옮긴다.
+      if (!snap.metadata.fromCache && !cloud.migrating) {
+        cloud.migrating = true; localCopy = null;
+        pushAll().then(() => { if (S.logs.length || S.profiles.length) toast('이 기기의 기록을 온라인으로 옮겼어요.'); }).catch(cloudFailed);
+      }
+      return;
+    }
+    if (localCopy) {
+      try { localStorage.setItem(KEY + '.before-' + Date.now(), localCopy); } catch (error) { /* 보관 실패는 무시 */ }
+      localCopy = null;
+    }
+    const d = snap.data();
+    S.ui.cloudUid = uid;
+    Object.assign(S, { pin: d.pin || '0000', settings: Object.assign({ dailyCap: 5, minReview: 0 }, d.settings), profiles: d.profiles || [], collections: d.collections || [] });
+    save();
+    if (!snap.metadata.hasPendingWrites) render();
+    applyLogs();
+  }));
+  cloud.unsub.push(onSnapshot(collection(familyRef(), 'logs'), snap => { lastLogs = snap; applyLogs(); }));
+}
+
+async function login() {
+  const a = cloud.authMod, provider = new a.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  try { await a.signInWithPopup(cloud.auth, provider); }
+  catch (error) {
+    if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment'].includes(error.code)) await a.signInWithRedirect(cloud.auth, provider);
+    else if (!['auth/popup-closed-by-user', 'auth/cancelled-popup-request'].includes(error.code)) toast('로그인하지 못했어요. (' + error.code + ')');
+  }
+}
+async function logout() {
+  if (!confirm('로그아웃할까요? 이 기기에서는 기록이 안 보이고, 온라인 기록은 그대로 남아요.')) return;
+  cloud.unsub.forEach(stop => stop()); cloud.unsub = [];
+  await cloud.authMod.signOut(cloud.auth);
+  // 다음 사람이 이 기기에서 우리 기록을 보지 못하게 기기 사본도 비운다.
+  S = fresh(); save(); view.admin = false; render();
+}
+
+function cloudGateView() {
+  if (!cloud.ready) return '<section class="welcome"><div class="welcome-art" style="width:min(180px,45vw)">' + turtleSVG() + '</div><h2>불러오는 중…</h2></section>';
+  if (cloud.failed) return `<section class="welcome"><div class="welcome-art" style="width:min(200px,50vw)">${turtleSVG()}</div>
+    <h2>인터넷에 연결하지 못했어요</h2><p class="lead">와이파이를 확인한 뒤 다시 시도해 주세요.</p><button class="btn primary big" data-act="retry">다시 시도</button></section>`;
+  return `<section class="welcome"><div class="welcome-art">${turtleSVG()}</div>
+    <h1 class="logo-big">에그<span>부기</span></h1>
+    <p class="lead">아이들 기록을 온라인에 안전하게 보관해요.<br>처음 한 번만 <b>보호자</b>가 구글 계정으로 로그인해 주세요.</p>
+    <button class="btn primary big" data-act="login">구글로 로그인</button>
+    <p class="muted small note">같은 구글 계정으로 로그인하면 다른 태블릿·휴대폰에서도 같은 기록이 보여요.</p></section>`;
+}
+
+// ---------- 화면 ----------
+function render() {
+  $('#brand').innerHTML = turtleSVG() + '<span>에그<b>부기</b></span>';
+  const blocked = cloudBlocked();
+  $('#kids').innerHTML = blocked ? '' : S.profiles.map(p => kidButton(p)).join('');
+  $('.gear').hidden = blocked;
+  const k = kid();
+  $('#tabs').hidden = blocked || view.admin || !k;
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === view.tab));
+  const main = $('#main');
+  let html;
+  if (blocked) html = cloudGateView();
+  else if (view.admin) html = adminView();
+  else if (!S.profiles.length) html = welcomeView();
+  else if (!k) html = pickView();
+  else html = view.tab === 'pets' ? petsView(k) : view.tab === 'note' ? noteView(k) : shelfView(k);
+  main.innerHTML = `<div class="view">${html}</div>`;
+}
+
+function welcomeView() {
+  return `<section class="welcome"><div class="welcome-art">${turtleSVG()}</div>
+    <h1 class="logo-big">에그<span>부기</span></h1>
+    <p class="lead">책을 한 권 읽을 때마다 알이 자라요.<br>다섯 권을 읽으면 주인공 <b>거북이 부기</b>가 태어나요!</p>
+    <button class="btn primary big" data-act="admin">시작하기</button>
+    <p class="muted small note">어른이 먼저 아이와 전집을 추가해 주세요 · 처음 관리 비밀번호는 <b>0000</b></p></section>`;
+}
+function pickView() {
+  return `<section class="welcome"><div class="welcome-art" style="width:min(200px,50vw)">${turtleSVG()}</div>
+    <h2>누가 책을 읽었나요?</h2><p class="muted">내 이름을 눌러 주세요</p>
+    <div class="arow" style="justify-content:center;gap:14px">${S.profiles.map(p => kidButton(p, true)).join('')}</div></section>`;
+}
+
+function shelfView(k) {
+  const cols = S.collections;
+  const col = cols.find(c => c.id === S.ui.col) || cols[0];
+  const singles = kidLogs(k.id).filter(l => l.type === 'single').sort((a, b) => b.createdAt - a.createdAt);
+  let html = `<section class="panel"><div class="bar"><div class="hello">${who(k)}의 책장</div>
+    <button class="btn accent" data-act="single">+ 다른 책 읽었어요</button></div>`;
+  if (!cols.length) html += '<div class="empty">아직 전집이 없어요.<br>어른에게 ⚙️ 관리에서 전집을 추가해 달라고 해 주세요.<br>전집이 아닌 책은 <b>+ 다른 책 읽었어요</b>로 기록할 수 있어요.</div>';
+  else {
+    html += '<div class="chips">' + cols.map(c => {
+      const done = c.books.filter(b => setLog(k.id, c.id, b.no)).length;
+      return `<button class="chip ${c === col ? 'on' : ''}" data-act="col" data-id="${c.id}">${esc(c.title)} <small>${done}/${c.books.length}</small></button>`;
+    }).join('') + '</div>';
+    const done = col.books.filter(b => setLog(k.id, col.id, b.no)).length;
+    const pct = Math.round(done / col.books.length * 100);
+    html += `<div class="progress"><div style="width:${pct}%"></div></div><div class="prog-label"><span><b>${done}</b> / ${col.books.length}권 읽었어요</span><span>${pct}%</span></div>`;
+    html += '<div class="grid">' + col.books.map(b => {
+      const log = setLog(k.id, col.id, b.no);
+      const label = b.title ? `<span class="tt">${esc(b.title)}</span>` : '';
+      const doneMark = log ? `<span class="stamp">읽음</span><span class="meta">${stars(log.rating)}<br>${log.date.slice(5).replace('-', '/')}</span>` : '';
+      return `<button class="tile ${log ? 'done' : ''}" data-act="book" data-no="${b.no}"><span class="no">${b.no}</span>${label}${doneMark}</button>`;
+    }).join('') + '</div>';
+  }
+  html += '</section>';
+  if (singles.length) html += '<section class="panel"><h3>📖 다른 책</h3><div class="list">' + singles.map(l =>
+    `<button class="row" data-act="log" data-id="${l.id}"><b>${esc(l.title)}</b><span>${stars(l.rating)} · ${l.date}</span></button>`).join('') + '</div></section>';
+  return html;
+}
+
+function petsView(k) {
+  const count = rewardCount(k.id);
+  const left = Math.max(0, S.settings.dailyCap - rewardedToday(k.id));
+  const states = petStates(count);
+  const { pet, n } = activePet(count);
+  let info;
+  if (count === 0) info = '<h2>아직 알이 없어요</h2><p>책을 한 권 다 읽으면 <b>신비한 알</b>이 나타나요!</p>';
+  else if (count >= PETS.length * PER_PET) info = `<h2>전설의 독서왕 👑</h2><p>모든 친구가 다이아몬드가 됐어요. 지금까지 알을 ${count}번 키웠어요!</p>`;
+  else if (n >= PER_PET) info = `<h2>${pet.kind} ${pet.name}</h2><p><b>Lv.6 다이아몬드</b> 최고 등급이에요! 👑<br>다음 책을 읽으면 새로운 알이 나타나요.</p>`;
+  else if (n < 5) info = `<h2>신비한 알 (${n}/5)</h2><p>${5 - n}권만 더 읽으면 알이 깨져요. 무엇이 태어날까요?</p>`;
+  else {
+    const { t, seg, next } = tierOf(n);
+    info = `<h2>${pet.kind} ${pet.name}</h2><p>지금 <b>Lv.${t + 1} ${TIERS[t].name}</b> 등급이에요.<br>${TIERS[next].name} 조각 ${seg}/5 · ${5 - seg}권 더 읽으면 승급해요!</p>`;
+  }
+  const ladder = TIERS.map((tier, i) => `<span><i style="background:${tier.bg}"></i>${tier.name} ${5 + i * 5}권</span>`).join('');
+  const shown = states.filter(s => s.n > 0);
+  const hero = count ? petCard(pet, n, true) : `<div class="pcard big locked"><div class="art">${eggSVG(null, 0)}</div><div class="cap"><b>???</b><small>책 1권이면 알이 나타나요</small></div></div>`;
+  return `<section class="panel"><div class="hero">${hero}
+    <div class="hero-info">${info}<p class="today-left">🥚 오늘 알이 더 자랄 수 있어요: <b>${left}번</b></p><div class="ladder">${ladder}</div></div></div></section>
+    <section class="panel"><h3>🏡 ${who(k)}의 친구들</h3><div class="shelf-pets">${shown.map(s => petCard(s.pet, s.n)).join('')}${shown.length < PETS.length ? petCard(null, 0) : ''}</div></section>`;
+}
+
+function noteView(k) {
+  const logs = kidLogs(k.id);
+  if (!logs.length) return '<section class="panel"><div class="empty">책을 읽고 기록하면 여기에 성장 노트가 생겨요. 🌱</div></section>';
+  const now = new Date();
+  const month = ymd(now).slice(0, 7);
+  const days = new Set(logs.map(l => l.date)).size;
+  let html = `<section class="panel"><div class="bar"><div class="hello">${who(k)}의 독서 성장 노트</div><button class="btn no-print" data-act="print">🖨️ 인쇄하기</button></div>
+    <div class="cards"><div class="stat">총 읽은 책<b>${logs.length}권</b></div><div class="stat">이번 달<b>${logs.filter(l => l.date.startsWith(month)).length}권</b></div>
+    <div class="stat">책 읽은 날<b>${days}일</b></div><div class="stat">알이 자란 횟수<b>${rewardCount(k.id)}번</b></div></div></section>`;
+
+  const cols = S.collections.map(c => ({ c, done: c.books.filter(b => setLog(k.id, c.id, b.no)).length })).filter(x => x.done);
+  if (cols.length) html += '<section class="panel"><h3>📚 전집 완독률</h3>' + cols.map(({ c, done }) => {
+    const pct = Math.round(done / c.books.length * 100);
+    return `<div class="colprog"><b>${esc(c.title)}</b><div class="progress"><div style="width:${pct}%"></div></div><span>${done}/${c.books.length} (${pct}%)</span></div>`;
+  }).join('') + '</section>';
+
+  const months = [5, 4, 3, 2, 1, 0].map(i => {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = ymd(d).slice(0, 7);
+    return { label: (d.getMonth() + 1) + '월', count: logs.filter(l => l.date.startsWith(key)).length };
+  });
+  const max = Math.max(1, ...months.map(m => m.count));
+  html += '<section class="panel"><h3>📊 월별 독서량</h3><div class="bars">' + months.map(m => `<div>${m.count}<span style="height:${m.count / max * 100}%"></span></div>`).join('')
+    + '</div><div class="bar-labels">' + months.map(m => `<span>${m.label}</span>`).join('') + '</div>';
+
+  // 잔디: 최근 16주, 세로는 일~토
+  const perDay = {};
+  logs.forEach(l => { perDay[l.date] = (perDay[l.date] || 0) + 1; });
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() - 7 * 15);
+  let cells = '';
+  for (let i = 0; i < 16 * 7; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const key = ymd(d), c = perDay[key] || 0;
+    cells += d > now ? '<i class="future"></i>' : `<i class="${c ? 'l' + Math.min(3, c) : ''}" title="${key} · ${c}권"></i>`;
+  }
+  html += '<h3 style="margin-top:24px">🌱 독서 잔디 (최근 16주)</h3><div class="grass">' + cells + '</div></section>';
+
+  const reviews = logs.filter(l => l.review).sort((a, b) => a.createdAt - b.createdAt);
+  html += '<section class="panel"><h3>✏️ 한줄평 성장</h3>';
+  if (reviews.length < 4) html += `<p class="muted">한줄평이 4개 이상 모이면 처음과 지금을 비교해 줄게요. (지금 ${reviews.length}개)</p>`;
+  else {
+    const half = Math.min(5, Math.floor(reviews.length / 2));
+    const avg = list => Math.round(list.reduce((sum, l) => sum + l.review.length, 0) / list.length);
+    const first = reviews.slice(0, half), last = reviews.slice(-half);
+    const firstOne = first[0], lastOne = last[last.length - 1];
+    html += `<p>처음 ${half}개 평균 <b>${avg(first)}자</b> → 최근 ${half}개 평균 <b>${avg(last)}자</b></p>
+      <div class="compare"><div class="quote"><small>처음 · ${firstOne.date} · ${esc(firstOne.title)}</small>“${esc(firstOne.review)}”</div>
+      <div class="quote"><small>최근 · ${lastOne.date} · ${esc(lastOne.title)}</small>“${esc(lastOne.review)}”</div></div>`;
+  }
+  html += '</section>';
+  const best = logs.filter(l => l.rating === 5).sort((a, b) => b.createdAt - a.createdAt);
+  if (best.length) html += '<section class="panel"><h3>⭐ 베스트 북</h3><div class="list">' + best.map(l =>
+    `<div class="row"><b>${esc(l.title)}</b><span class="muted">${l.review ? '“' + esc(l.review) + '”' : ''}</span></div>`).join('') + '</div></section>';
+  return html;
+}
+
+function adminView() {
+  const lastBackup = S.ui.lastBackup ? new Date(S.ui.lastBackup) : null;
+  const backupOld = !cloud.user && S.logs.length && (!lastBackup || Date.now() - lastBackup.getTime() > 14 * 864e5);
+  const logKid = S.profiles.find(p => p.id === view.logKid) || S.profiles[0];
+  const recent = logKid ? kidLogs(logKid.id).sort((a, b) => b.createdAt - a.createdAt).slice(0, 40) : [];
+  return `<section class="panel"><div class="admin-head"><h2 style="margin:0">⚙️ 보호자·선생님 관리</h2><button class="btn primary" data-act="adminExit">관리 끝내기</button></div>
+  ${S.pin === '0000' ? '<div class="warn">처음 비밀번호(0000)를 그대로 쓰고 있어요. 아래 ‘관리 비밀번호 바꾸기’에서 바꿔 주세요.</div>' : ''}
+  ${backupOld ? '<div class="warn">기록은 이 기기에만 저장돼요. 2주에 한 번은 아래에서 백업 파일을 받아 두세요.</div>' : ''}</section>
+  <div class="admin-grid">
+  ${cloud.user ? `<section class="panel"><h3>☁️ 온라인 저장</h3>
+    <p>기록이 <b>${esc(cloud.user.email || '보호자 계정')}</b> 계정에 저장되고 있어요. 같은 계정으로 로그인한 기기에서는 같은 기록이 보여요.</p>
+    <div class="actions"><button class="btn danger" data-act="logout">로그아웃</button></div></section>` : ''}
+  <section class="panel"><h3>👧 아이들</h3>
+    <p class="muted small">실명 대신 별명이나 번호를 써 주세요. (예: 첫째, 1번 다람쥐)</p>
+    ${S.profiles.map(p => `<div class="arow"><span class="dot" style="background:${p.color}"></span><input id="nk-${p.id}" value="${esc(p.nickname)}" maxlength="12" aria-label="별명">
+      <button class="btn" data-act="kidSave" data-id="${p.id}">저장</button><button class="btn danger" data-act="kidDel" data-id="${p.id}">삭제</button></div>`).join('')}
+    <div class="arow"><input id="newKid" maxlength="12" placeholder="새 아이 별명"><button class="btn primary" data-act="kidAdd">추가</button></div>
+  </section>
+
+  <section class="panel"><h3>📚 전집</h3>
+    ${S.collections.map(c => `<div class="arow"><b>${esc(c.title)}</b><span class="muted">${c.books.length}권</span><button class="btn danger" data-act="colDel" data-id="${c.id}">삭제</button></div>`).join('') || '<p class="muted">아직 전집이 없어요.</p>'}
+    <label>새 전집 이름<input id="colTitle" maxlength="40" placeholder="예: 우리집 과학 전집"></label>
+    <label>책 제목 붙여넣기 <span class="muted small" id="colPreview">(한 줄에 한 권, 위에서부터 1번)</span><textarea id="colBooks" rows="6" placeholder="첫째 권 제목&#10;둘째 권 제목&#10;…"></textarea></label>
+    <label>제목 없이 번호만 만들기 <span class="muted small">(위 칸이 비어 있을 때)</span><input id="colCount" type="number" min="1" max="300" inputmode="numeric" placeholder="예: 50"></label>
+    <div class="actions"><button class="btn primary" data-act="colAdd">전집 만들기</button></div>
+  </section>
+
+  <section class="panel"><h3>🗂️ 기록 관리</h3>
+    <p class="muted small">잘못 누른 기록을 지우면 알 성장도 함께 되돌아가요.</p>
+    ${S.profiles.length ? `<select id="logKid" aria-label="아이 고르기">${S.profiles.map(p => `<option value="${p.id}" ${p === logKid ? 'selected' : ''}>${esc(p.nickname)}</option>`).join('')}</select>
+    <div class="list loglist" style="margin-top:12px">${recent.map(l => `<div class="row"><span><b>${esc(l.title)}</b><br><small class="muted">${l.date} · ${stars(l.rating)}${l.rewarded ? ' · 🥚' : ''}</small></span><button class="btn danger" data-act="logDel" data-id="${l.id}">지우기</button></div>`).join('') || '<p class="muted">기록이 없어요.</p>'}</div>` : '<p class="muted">아이를 먼저 추가해 주세요.</p>'}
+  </section>
+
+  <section class="panel"><h3>🥚 알 성장 규칙</h3>
+    <label>하루에 알이 자랄 수 있는 최대 횟수 <span class="muted small">(그 뒤 기록은 저장만 돼요)</span><input id="cap" type="number" min="1" max="30" inputmode="numeric" value="${S.settings.dailyCap}"></label>
+    <label>한줄평 최소 글자 수 <span class="muted small">(0이면 안 써도 돼요)</span><input id="minReview" type="number" min="0" max="50" inputmode="numeric" value="${S.settings.minReview}"></label>
+    <div class="actions"><button class="btn primary" data-act="ruleSave">규칙 저장</button></div>
+  </section>
+
+  <section class="panel"><h3>🔒 관리 비밀번호 바꾸기</h3>
+    <div class="arow"><input id="pin1" type="password" inputmode="numeric" maxlength="4" placeholder="새 숫자 4자리"><input id="pin2" type="password" inputmode="numeric" maxlength="4" placeholder="한 번 더"><button class="btn primary" data-act="pinSave">바꾸기</button></div>
+  </section>
+
+  <section class="panel"><h3>💾 백업</h3>
+    <p class="muted small">기록은 이 기기의 브라우저에만 있어요. 브라우저 데이터를 지우면 사라지니 백업 파일을 받아 두세요.${lastBackup ? ' 마지막 백업: ' + ymd(lastBackup) : ''}</p>
+    <div class="arow"><button class="btn primary" data-act="export">백업 파일 받기</button>
+    <label class="btn" style="margin:0">백업 불러오기<input id="importFile" type="file" accept="application/json,.json" hidden></label></div>
+  </section>
+  </div>`;
+}
+
+// ---------- 창 ----------
+function openSheet(html) {
+  $('#sheet').innerHTML = html;
+  $('#modal').hidden = false;
+}
+function closeSheet() {
+  $('#modal').hidden = true;
+  $('#sheet').innerHTML = '';
+}
+let toastTimer;
+function toast(message) {
+  const el = $('#toast');
+  el.textContent = message;
+  el.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('on'), 2600);
+}
+
+// 읽은 책 기록하기(새 기록) 또는 고치기(이미 있는 기록). 고치기는 알을 키우지 않는다.
+function openRead(opt) {
+  const k = kid();
+  if (!k) return;
+  const log = opt.log;
+  let rating = log ? log.rating : 0;
+  const capReached = !log && rewardedToday(k.id) >= S.settings.dailyCap;
+  const min = S.settings.minReview;
+  openSheet(`<h2>${log ? '기록 고치기' : '다 읽었나요? 📖'}</h2>
+    ${opt.single && !log ? '<label>책 제목<input id="fTitle" maxlength="60" placeholder="읽은 책 제목을 써 주세요"></label>' : `<p class="book-title">${esc(log ? log.title : opt.title)}</p>`}
+    <label>읽은 날짜<input id="fDate" type="date" max="${today()}" value="${log ? log.date : today()}"></label>
+    <label>별점</label><div class="stars" id="fStars">${[1, 2, 3, 4, 5].map(i => `<button type="button" data-star="${i}" aria-label="별 ${i}개">★</button>`).join('')}</div>
+    <label>한줄평 <span class="muted" id="fCount">0자</span>${min ? ` <span class="muted">(${min}자 이상)</span>` : ''}<textarea id="fReview" rows="3" maxlength="100" placeholder="어떤 점이 재미있었나요?"></textarea></label>
+    <p class="hint ${capReached ? 'soft' : ''}" id="fHint">${capReached ? `오늘은 알이 벌써 ${S.settings.dailyCap}번 자랐어요. 기록은 저장되고, 알은 내일 또 자라요.` : ''}</p>
+    <div class="actions">${log ? '<button class="btn danger" id="fUndo" style="margin-right:auto">읽음 취소</button>' : ''}<button class="btn" data-act="close">닫기</button><button class="btn accent big" id="fSubmit">${log ? '고치기' : capReached ? '기록하기 📚' : '다 읽었어요! 🥚'}</button></div>`);
+  const review = $('#fReview');
+  review.value = log ? log.review : '';
+  const drawStars = () => document.querySelectorAll('#fStars button').forEach(b => b.classList.toggle('on', Number(b.dataset.star) <= rating));
+  const count = () => { $('#fCount').textContent = review.value.trim().length + '자'; };
+  drawStars(); count();
+  review.addEventListener('input', count);
+  $('#fStars').addEventListener('click', e => {
+    const b = e.target.closest('[data-star]');
+    if (b) { rating = Number(b.dataset.star); drawStars(); }
+  });
+  // 잘못 누른 '다 읽었어요'를 아이가 바로 되돌린다. 기록을 지우면 책은 다시 회색이 되고 알 성장도 한 칸 돌아간다.
+  // 다시 체크해도 알이 더 자라지는 않는다(지운 만큼만 다시 자란다).
+  if (log) $('#fUndo').addEventListener('click', () => {
+    if (!confirm(`‘${log.title}’ 읽음을 취소할까요?${log.rewarded ? '\n알 성장도 한 칸 되돌아가요.' : ''}`)) return;
+    S.logs = S.logs.filter(x => x.id !== log.id);
+    save(); dropLog(log.id); closeSheet(); render(); toast('읽음을 취소했어요.');
+  });
+  $('#fSubmit').addEventListener('click', () => {
+    const hint = message => { const el = $('#fHint'); el.className = 'hint'; el.textContent = message; };
+    const title = opt.single && !log ? $('#fTitle').value.trim() : null;
+    const date = $('#fDate').value, text = review.value.trim();
+    if (title !== null && !title) return hint('책 제목을 써 주세요.');
+    if (!date || date > today()) return hint('읽은 날짜를 확인해 주세요.');
+    if (!rating) return hint('별을 눌러 별점을 골라 주세요.');
+    if (text.length < min) return hint(`한줄평을 ${min}자 이상 써 주세요.`);
+    if (log) {
+      Object.assign(log, { date, rating, review: text });
+      save(); pushLog(log); closeSheet(); render(); toast('기록을 고쳤어요.');
+      return;
+    }
+    if (opt.colId && setLog(k.id, opt.colId, opt.no)) { closeSheet(); render(); return; }
+    const before = rewardCount(k.id);
+    const rewarded = rewardedToday(k.id) < S.settings.dailyCap;
+    const entry = {
+      id: uid(), profileId: k.id, type: opt.single ? 'single' : 'set', collectionId: opt.colId || null, bookNo: opt.no ?? null,
+      title: title ?? opt.title, date, rating, review: text, rewarded, createdAt: Date.now(),
+    };
+    S.logs.push(entry);
+    save(); pushLog(entry); render(); celebrate(before, rewarded);
+  });
+}
+
+function celebrate(before, rewarded) {
+  const after = before + (rewarded ? 1 : 0);
+  if (!rewarded) {
+    const { pet, n } = activePet(after);
+    openSheet(`<div class="celebrate"><h2>기록 완료! 📚</h2>${after ? petCard(pet, n, true) : ''}<p>오늘은 알이 충분히 자랐어요.<br>내일 또 읽으면 다시 자라요!</p><button class="btn primary big" data-act="close">좋아요</button></div>`);
+    return;
+  }
+  const index = Math.min(Math.floor((after - 1) / PER_PET), PETS.length - 1);
+  const pet = PETS[index], n = Math.min(PER_PET, after - index * PER_PET);
+  let title, message;
+  if (after > PETS.length * PER_PET) { title = '전설의 독서왕! 👑'; message = `모든 친구가 다이아몬드예요. 알을 ${after}번 키웠어요!`; }
+  else if (n === 1) { title = index === 0 ? '신비한 알을 발견했어요!' : '새로운 알이 나타났어요!'; message = '책을 다섯 권 읽으면 알이 깨져요.'; }
+  else if (n < 5) { title = ['', '', '알에 무늬가 생겼어요!', '알이 흔들흔들!', '알에 금이 갔어요!'][n]; message = `부화까지 ${5 - n}권 남았어요.`; }
+  else if (n === 5) { title = `${pet.kind} ${pet.name} 탄생! 🎉`; message = index === 0 ? '에그부기의 주인공, 거북이 부기가 태어났어요!' : `알에서 ${pet.kind} ${pet.name}가 나왔어요!`; }
+  else if ((n - 5) % 5 === 0) { const t = (n - 5) / 5; title = `${TIERS[t].name} 승급! ✨`; message = n === PER_PET ? `${pet.name}가 최고 등급이 됐어요! 다음 알이 열려요.` : `${pet.name}가 ${TIERS[t].name} 등급이 됐어요!`; }
+  else { const { seg, next } = tierOf(n); title = '테두리 조각 획득!'; message = `${TIERS[next].name} 조각 ${seg}/5 · ${5 - seg}권 더 읽으면 승급해요.`; }
+  const colors = ['#f5994a', '#ffd36e', '#7ee8a5', '#7ab8ff', '#c58bff', '#ff7aa2', '#4fb7ac'];
+  const confetti = n === 5 || (n > 5 && (n - 5) % 5 === 0)
+    ? '<div class="confetti">' + Array.from({ length: 30 }, (_, i) => `<i style="left:${Math.random() * 100}%;background:${colors[i % colors.length]};animation-delay:${Math.random() * .6}s"></i>`).join('') + '</div>' : '';
+  openSheet(`<div class="celebrate">${confetti}<h2>${title}</h2>${petCard(pet, n, true)}<p>${message}</p><button class="btn primary big" data-act="close">좋아요!</button></div>`);
+}
+
+// 관리 비밀번호. 아이가 어른 화면에 들어가지 못하게 하는 잠금이다(이 기기 안의 잠금일 뿐 암호화는 아니다).
+let pinFails = 0, pinLockUntil = 0;
+function openPin() {
+  let typed = '';
+  openSheet(`<h2 style="text-align:center">🔒 관리 비밀번호</h2><p class="muted" style="text-align:center" id="pinMsg">숫자 4자리를 눌러 주세요</p>
+    <div class="pin-dots" id="pinDots">${'<i></i>'.repeat(4)}</div>
+    <div class="pad" id="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(d => `<button data-d="${d}">${d}</button>`).join('')}<button data-act="close" style="font-size:19px">닫기</button><button data-d="0">0</button><button data-d="back" style="font-size:24px">⌫</button></div>`);
+  const draw = () => document.querySelectorAll('#pinDots i').forEach((dot, i) => dot.classList.toggle('on', i < typed.length));
+  $('#pad').addEventListener('click', e => {
+    const b = e.target.closest('[data-d]');
+    if (!b) return;
+    if (Date.now() < pinLockUntil) { $('#pinMsg').textContent = `너무 많이 틀렸어요. ${Math.ceil((pinLockUntil - Date.now()) / 1000)}초 뒤에 다시 해 주세요.`; return; }
+    typed = b.dataset.d === 'back' ? typed.slice(0, -1) : (typed + b.dataset.d).slice(0, 4);
+    draw();
+    if (typed.length < 4) return;
+    if (typed === S.pin) { pinFails = 0; view.admin = true; closeSheet(); render(); return; }
+    pinFails++;
+    if (pinFails >= 5) { pinFails = 0; pinLockUntil = Date.now() + 30000; }
+    typed = '';
+    $('#pinMsg').textContent = '비밀번호가 달라요.';
+    const dots = $('#pinDots');
+    dots.classList.remove('shake'); void dots.offsetWidth; dots.classList.add('shake');
+    setTimeout(draw, 250);
+  });
+}
+
+// ---------- 관리 동작 ----------
+const adminActions = {
+  adminExit() { view.admin = false; render(); },
+  kidAdd() {
+    const name = $('#newKid').value.trim();
+    if (!name) return toast('별명을 써 주세요.');
+    const p = { id: uid(), nickname: name, color: KID_COLORS[S.profiles.length % KID_COLORS.length], createdAt: Date.now() };
+    S.profiles.push(p);
+    if (!S.ui.kid) S.ui.kid = p.id;
+    save(); pushMeta(); render(); toast(`${name} 추가!`);
+  },
+  kidSave(id) {
+    const p = S.profiles.find(x => x.id === id), name = $('#nk-' + id).value.trim();
+    if (!p || !name) return toast('별명을 써 주세요.');
+    p.nickname = name; save(); pushMeta(); render(); toast('이름을 바꿨어요.');
+  },
+  kidDel(id) {
+    const p = S.profiles.find(x => x.id === id);
+    if (!p || !confirm(`${p.nickname}의 기록 ${kidLogs(id).length}개와 알이 모두 지워져요. 지울까요?`)) return;
+    S.profiles = S.profiles.filter(x => x.id !== id);
+    kidLogs(id).forEach(l => dropLog(l.id));
+    S.logs = S.logs.filter(l => l.profileId !== id);
+    if (S.ui.kid === id) S.ui.kid = S.profiles[0] ? S.profiles[0].id : null;
+    save(); pushMeta(); render();
+  },
+  colAdd() {
+    const title = $('#colTitle').value.trim();
+    const lines = $('#colBooks').value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    const count = Number($('#colCount').value);
+    if (!title) return toast('전집 이름을 써 주세요.');
+    let books;
+    if (lines.length) books = lines.slice(0, 300).map((t, i) => ({ no: i + 1, title: t.slice(0, 60) }));
+    else if (Number.isInteger(count) && count >= 1 && count <= 300) books = Array.from({ length: count }, (_, i) => ({ no: i + 1, title: '' }));
+    else return toast('책 제목을 붙여넣거나 권수를 써 주세요.');
+    const c = { id: uid(), title, books, createdAt: Date.now() };
+    S.collections.push(c); S.ui.col = c.id;
+    save(); pushMeta(); render(); toast(`${title} ${books.length}권을 만들었어요.`);
+  },
+  colDel(id) {
+    const c = S.collections.find(x => x.id === id);
+    if (!c || !confirm(`‘${c.title}’ 전집을 지울까요? 이미 읽은 기록은 '다른 책'으로 남고 알도 그대로예요.`)) return;
+    // 읽은 기록과 알 성장은 아이가 한 일이라 지우지 않고 단행본으로 옮긴다.
+    S.logs.forEach(l => { if (l.collectionId === id) { l.type = 'single'; l.collectionId = null; l.title = `${c.title} ${l.title}`; pushLog(l); } });
+    S.collections = S.collections.filter(x => x.id !== id);
+    save(); pushMeta(); render();
+  },
+  logDel(id) {
+    const l = S.logs.find(x => x.id === id);
+    if (!l || !confirm(`‘${l.title}’ 기록을 지울까요?${l.rewarded ? ' 알 성장도 한 칸 되돌아가요.' : ''}`)) return;
+    S.logs = S.logs.filter(x => x.id !== id);
+    save(); dropLog(id); render(); toast('기록을 지웠어요.');
+  },
+  ruleSave() {
+    const cap = Number($('#cap').value), min = Number($('#minReview').value);
+    if (!Number.isInteger(cap) || cap < 1 || cap > 30) return toast('하루 횟수는 1~30 사이로 써 주세요.');
+    if (!Number.isInteger(min) || min < 0 || min > 50) return toast('글자 수는 0~50 사이로 써 주세요.');
+    S.settings.dailyCap = cap; S.settings.minReview = min;
+    save(); pushMeta(); render(); toast('규칙을 저장했어요.');
+  },
+  pinSave() {
+    const a = $('#pin1').value, b = $('#pin2').value;
+    if (!/^\d{4}$/.test(a)) return toast('숫자 4자리로 써 주세요.');
+    if (a !== b) return toast('두 칸이 달라요.');
+    S.pin = a; save(); pushMeta(); render(); toast('비밀번호를 바꿨어요.');
+  },
+  export() {
+    const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `에그부기-백업-${today()}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    S.ui.lastBackup = Date.now(); save(); render();
+  },
+};
+
+document.addEventListener('click', e => {
+  const tab = e.target.closest('[data-tab]');
+  if (tab) { view.tab = tab.dataset.tab; render(); window.scrollTo(0, 0); return; }
+  const el = e.target.closest('[data-act]');
+  if (!el) { if (e.target === $('#modal')) closeSheet(); return; }
+  const act = el.dataset.act, id = el.dataset.id;
+  const k = kid();
+  if (act === 'close') closeSheet();
+  // 로고: 고른 아이를 풀고 '누가 책을 읽었나요?' 화면으로 돌아간다(아이가 없으면 첫 화면).
+  else if (act === 'home') { S.ui.kid = null; view.admin = false; view.tab = 'shelf'; save(); render(); window.scrollTo(0, 0); }
+  else if (act === 'admin') { if (!view.admin) openPin(); }
+  else if (act === 'login') login();
+  else if (act === 'retry') { cloud.ready = false; render(); startCloud(); }
+  else if (act === 'logout' && view.admin) logout();
+  else if (act === 'kid') { S.ui.kid = id; view.admin = false; save(); render(); }
+  else if (act === 'col') { S.ui.col = id; save(); render(); }
+  else if (act === 'single') openRead({ single: true });
+  else if (act === 'book' && k) {
+    const col = S.collections.find(c => c.id === S.ui.col) || S.collections[0];
+    const no = Number(el.dataset.no), book = col.books.find(b => b.no === no);
+    const log = setLog(k.id, col.id, no);
+    openRead(log ? { log } : { colId: col.id, no, title: `${col.title} ${no}. ${bookName(book)}` });
+  }
+  else if (act === 'log') { const log = S.logs.find(l => l.id === id); if (log) openRead({ log }); }
+  else if (act === 'print') window.print();
+  else if (view.admin && adminActions[act]) adminActions[act](id);
+});
+
+document.addEventListener('input', e => {
+  if (e.target.id === 'colBooks') {
+    const n = e.target.value.split(/\r?\n/).filter(s => s.trim()).length;
+    $('#colPreview').textContent = n ? `(${n}권 · 1번부터 ${n}번까지)` : '(한 줄에 한 권, 위에서부터 1번)';
+  }
+});
+
+document.addEventListener('change', e => {
+  if (e.target.id === 'logKid') { view.logKid = e.target.value; render(); }
+  if (e.target.id === 'importFile' && e.target.files[0]) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      let data;
+      try { data = JSON.parse(reader.result); } catch (error) { data = null; }
+      if (!valid(data)) return toast('에그부기 백업 파일이 아니에요.');
+      if (!confirm(`백업에 아이 ${data.profiles.length}명, 기록 ${data.logs.length}개가 있어요. 지금 기록을 이 백업으로 바꿀까요?`)) return;
+      const oldIds = S.logs.map(l => l.id), ui = S.ui;
+      S = data;
+      S.settings = Object.assign({ dailyCap: 5, minReview: 0 }, S.settings);
+      S.ui = Object.assign({}, data.ui, { cloudUid: ui.cloudUid });
+      save(); render(); toast('백업을 불러왔어요.');
+      pushAll(oldIds.filter(id => !S.logs.some(l => l.id === id))).catch(cloudFailed);
+    };
+    reader.readAsText(e.target.files[0]);
+    e.target.value = '';
+  }
+});
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#modal').hidden) closeSheet(); });
+
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+render();
+startCloud();
+</script>
+</body>
+</html>
