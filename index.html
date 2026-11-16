@@ -286,7 +286,10 @@ main{max-width:1140px;margin:0 auto;padding:18px 16px 120px}
 'use strict';
 // 에그부기 1단계: 서버 없이 이 기기의 브라우저 저장소(localStorage)에만 기록한다.
 const KEY = 'eggbugi.v1';
-const PER_PET = 30;
+// 한 단계 = 책 3권: 3권에 부화(나무), 그 뒤 3권마다 승급해 18권이면 다이아몬드. (2026-11-16 전에는 5권·30권)
+const STEP = 3;
+const PER_PET = STEP * 6;
+const OLD_PER_PET = 30;
 // 첫 알에서는 늘 주인공 거북이 부기가 태어난다. 앞 친구가 다이아몬드가 되면 다음 알이 열린다.
 // 순서와 이름은 사용자가 정한 목록(art/애들 이름.txt)을 따른다. 그림은 art/{key}.png(긴 쪽 640px 투명 PNG), 원본은 art/originals/.
 // egg = 알 무늬 두 색(그 친구 몸 색을 미리 보여 준다), pattern = 무늬 모양(hex 육각 / waves 물결 / 나머지 점박이).
@@ -360,18 +363,50 @@ const rewardedToday = id => S.logs.filter(l => l.profileId === id && l.rewarded 
 const setLog = (kidId, colId, no) => S.logs.find(l => l.profileId === kidId && l.type === 'set' && l.collectionId === colId && l.bookNo === no);
 const bookName = b => b.title || b.no + '권';
 
-// 알 성장은 저장하지 않고 '알이 자란 기록 수'로 매번 계산한다. 기록을 지우면 성장도 저절로 되돌아간다.
-function petStates(count) {
-  return PETS.map((pet, i) => ({ pet, n: Math.max(0, Math.min(PER_PET, count - i * PER_PET)) }));
+// ---------- 친구가 열리는 순서 ----------
+// 첫 알은 늘 주인공 부기, 그다음 친구는 아이마다 다르게 섞인다(아이 프로필의 order에 저장).
+// 섞는 순서는 아이 id로 정해지는 '고정된 무작위'라서, 두 기기가 동시에 처음 계산해도 같은 순서가 나온다.
+const PET = Object.fromEntries(PETS.map(p => [p.key, p]));
+function seededShuffle(list, seedText) {
+  let seed = 0;
+  for (const ch of seedText) seed = (Math.imul(seed, 31) + ch.charCodeAt(0)) | 0;
+  const rand = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const out = list.slice();
+  for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
+  return out;
 }
-// 지금 보여 줄 친구: 자라기 시작한 마지막 친구. 부기가 막 다이아몬드가 됐을 때는 아직 새 알이 아니라 부기다.
-function activePet(count) {
-  const states = petStates(count);
+// 순서가 없는 아이(새 아이, 또는 순서대로 열리던 예전 아이)에게 순서를 정해 준다.
+// 예전 방식으로 이미 만난 친구(30권마다 하나씩)는 앞에 그대로 두어, 키우던 친구가 바뀌지 않게 한다.
+function ensureOrders() {
+  let changed = false;
+  for (const p of S.profiles) {
+    const order = Array.isArray(p.order) ? p.order.filter(key => PET[key]) : null;
+    let next = order;
+    if (!order) {
+      const met = Math.max(1, Math.min(PETS.length, Math.ceil(rewardCount(p.id) / OLD_PER_PET)));
+      const prefix = PETS.slice(0, met).map(x => x.key);
+      next = prefix.concat(seededShuffle(PETS.map(x => x.key).filter(key => !prefix.includes(key)), p.id));
+    } else if (order.length < PETS.length) {
+      next = order.concat(seededShuffle(PETS.map(x => x.key).filter(key => !order.includes(key)), p.id));
+    }
+    if (JSON.stringify(next) !== JSON.stringify(p.order)) { p.order = next; changed = true; }
+  }
+  if (changed) { save(); pushMeta(); }
+}
+const orderOf = k => (Array.isArray(k.order) && k.order.length ? k.order : PETS.map(p => p.key)).map(key => PET[key]).filter(Boolean);
+
+// 알 성장은 저장하지 않고 '알이 자란 기록 수'로 매번 계산한다. 기록을 지우면 성장도 저절로 되돌아간다.
+function petStates(count, order) {
+  return order.map((pet, i) => ({ pet, n: Math.max(0, Math.min(PER_PET, count - i * PER_PET)) }));
+}
+// 지금 보여 줄 친구: 자라기 시작한 마지막 친구. 막 다이아몬드가 됐을 때는 아직 새 알이 아니라 그 친구다.
+function activePet(count, order) {
+  const states = petStates(count, order);
   return states.filter(s => s.n > 0).pop() || states[0];
 }
 function tierOf(n) {
-  const t = Math.min(5, Math.floor((n - 5) / 5));
-  return { t, seg: n >= PER_PET ? 0 : (n - 5) % 5, next: Math.min(5, t + 1) };
+  const t = Math.min(5, Math.floor((n - STEP) / STEP));
+  return { t, seg: n >= PER_PET ? 0 : (n - STEP) % STEP, next: Math.min(5, t + 1) };
 }
 
 // ---------- 그림 ----------
@@ -405,16 +440,18 @@ const turtleSVG = () => creatureImg(PETS[0]);
 const WING = '<svg class="wing {side}" viewBox="0 0 50 40"><path d="M48 20 C30 0 8 2 2 8 C12 12 6 16 2 20 C12 22 8 28 4 32 C20 38 38 34 48 20Z" fill="#bff5e6" stroke="#1fa58a" stroke-width="2"/></svg>';
 const CROWN = '<svg class="crown" viewBox="0 0 60 40"><path d="M6 34 L4 10 L18 22 L30 4 L42 22 L56 10 L54 34Z" fill="#ffd36e" stroke="#c99a1a" stroke-width="2.5" stroke-linejoin="round"/><circle cx="30" cy="25" r="4" fill="#ff7aa2"/></svg>';
 
-// 테두리는 위 → 오른쪽 → 아래 → 왼쪽 → 동그란 엠블럼 다섯 조각. 다섯째 조각을 채우는 순간이 승급이다.
+// 테두리는 (위·오른쪽) → (아래·왼쪽) → 동그란 엠블럼 세 조각. 셋째 조각을 채우는 순간이 승급이다.
+// 알은 1권째 하얀 알, 2권째 무늬가 생기고 금이 가며 흔들리고, 3권째 부화한다.
+const SEG_GROUPS = [['top', 'right'], ['bottom', 'left'], ['emblem']];
 function petCard(pet, n, big = false) {
   const size = big ? ' big' : '';
   if (n <= 0) return `<div class="pcard locked${size}"><div class="art">${eggSVG(null, 0)}</div><div class="cap"><b>???</b><small>아직 잠긴 알</small></div></div>`;
-  if (n < 5) return `<div class="pcard${size}"><div class="art">${eggSVG(pet.key, n)}</div><div class="gauge"><i style="width:${n * 20}%"></i></div><div class="cap"><b>신비한 알</b><small>부화까지 ${5 - n}권 (${n}/5)</small></div></div>`;
+  if (n < STEP) return `<div class="pcard${size}"><div class="art">${eggSVG(pet.key, n === 1 ? 1 : 4)}</div><div class="gauge"><i style="width:${n / STEP * 100}%"></i></div><div class="cap"><b>신비한 알</b><small>부화까지 ${STEP - n}권 (${n}/${STEP})</small></div></div>`;
   const { t, seg, next } = tierOf(n);
-  const segs = ['top', 'right', 'bottom', 'left', 'emblem'].map((side, i) =>
-    `<i class="seg ${side}" style="background:${(i < seg ? TIERS[next] : TIERS[t]).bg}">${side === 'emblem' ? t + 1 : ''}</i>`).join('');
+  const segs = SEG_GROUPS.map((sides, i) => sides.map(side =>
+    `<i class="seg ${side}" style="background:${(i < seg ? TIERS[next] : TIERS[t]).bg}">${side === 'emblem' ? t + 1 : ''}</i>`).join('')).join('');
   const extra = (t >= 4 ? WING.replace('{side}', 'l') + WING.replace('{side}', 'r') : '') + (t >= 5 ? CROWN : '');
-  const left = n < PER_PET ? ` · ${TIERS[next].name}까지 ${5 - seg}권` : ' · 최고 등급!';
+  const left = n < PER_PET ? ` · ${TIERS[next].name}까지 ${STEP - seg}권` : ' · 최고 등급!';
   return `<div class="pcard t${t}${size}">${segs}${extra}<div class="art">${creatureImg(pet)}</div><div class="cap"><b>${pet.kind} ${pet.name}</b><small>Lv.${t + 1} ${TIERS[t].name}${left}</small></div></div>`;
 }
 const stars = n => `<span class="st">${'★'.repeat(n)}<i>${'★'.repeat(5 - n)}</i></span>`;
@@ -444,7 +481,7 @@ async function startCloud() {
     authMod.getRedirectResult(cloud.auth).catch(() => {});
     authMod.onAuthStateChanged(cloud.auth, user => {
       cloud.unsub.forEach(stop => stop()); cloud.unsub = [];
-      cloud.user = user; cloud.ready = true;
+      cloud.user = user; cloud.ready = true; cloud.logsReady = false;
       if (user) listen(user.uid);
       render();
     });
@@ -481,6 +518,8 @@ function listen(uid) {
   const applyLogs = () => {
     if (!lastLogs || S.ui.cloudUid !== uid) return;
     S.logs = lastLogs.docs.map(x => x.data());
+    // 서버에서 받은 전체 기록이 있어야 '예전에 만난 친구'를 바르게 세어 친구 순서를 정할 수 있다(ensureOrders).
+    if (!lastLogs.metadata.fromCache) cloud.logsReady = true;
     save();
     if (!lastLogs.metadata.hasPendingWrites) render();
   };
@@ -539,6 +578,7 @@ function cloudGateView() {
 function render() {
   $('#brand').innerHTML = turtleSVG() + '<span>에그<b>부기</b></span>';
   const blocked = cloudBlocked();
+  if (!blocked && (!cloud.on || cloud.logsReady)) ensureOrders();
   $('#kids').innerHTML = blocked ? '' : S.profiles.map(p => kidButton(p)).join('');
   $('.gear').hidden = blocked;
   const k = kid();
@@ -598,23 +638,24 @@ function shelfView(k) {
 function petsView(k) {
   const count = rewardCount(k.id);
   const left = Math.max(0, S.settings.dailyCap - rewardedToday(k.id));
-  const states = petStates(count);
-  const { pet, n } = activePet(count);
+  const order = orderOf(k);
+  const states = petStates(count, order);
+  const { pet, n } = activePet(count, order);
   let info;
   if (count === 0) info = '<h2>아직 알이 없어요</h2><p>책을 한 권 다 읽으면 <b>신비한 알</b>이 나타나요!</p>';
-  else if (count >= PETS.length * PER_PET) info = `<h2>전설의 독서왕 👑</h2><p>모든 친구가 다이아몬드가 됐어요. 지금까지 알을 ${count}번 키웠어요!</p>`;
-  else if (n >= PER_PET) info = `<h2>${pet.kind} ${pet.name}</h2><p><b>Lv.6 다이아몬드</b> 최고 등급이에요! 👑<br>다음 책을 읽으면 새로운 알이 나타나요.</p>`;
-  else if (n < 5) info = `<h2>신비한 알 (${n}/5)</h2><p>${5 - n}권만 더 읽으면 알이 깨져요. 무엇이 태어날까요?</p>`;
+  else if (count >= order.length * PER_PET) info = `<h2>전설의 독서왕 👑</h2><p>모든 친구가 다이아몬드가 됐어요. 지금까지 알을 ${count}번 키웠어요!</p>`;
+  else if (n >= PER_PET) info = `<h2>${pet.kind} ${pet.name}</h2><p><b>Lv.6 다이아몬드</b> 최고 등급이에요! 👑<br>다음 책을 읽으면 새로운 알이 나타나요. 누가 나올까요?</p>`;
+  else if (n < STEP) info = `<h2>신비한 알 (${n}/${STEP})</h2><p>${STEP - n}권만 더 읽으면 알이 깨져요. 무엇이 태어날까요?</p>`;
   else {
     const { t, seg, next } = tierOf(n);
-    info = `<h2>${pet.kind} ${pet.name}</h2><p>지금 <b>Lv.${t + 1} ${TIERS[t].name}</b> 등급이에요.<br>${TIERS[next].name} 조각 ${seg}/5 · ${5 - seg}권 더 읽으면 승급해요!</p>`;
+    info = `<h2>${pet.kind} ${pet.name}</h2><p>지금 <b>Lv.${t + 1} ${TIERS[t].name}</b> 등급이에요.<br>${TIERS[next].name} 조각 ${seg}/${STEP} · ${STEP - seg}권 더 읽으면 승급해요!</p>`;
   }
-  const ladder = TIERS.map((tier, i) => `<span><i style="background:${tier.bg}"></i>${tier.name} ${5 + i * 5}권</span>`).join('');
+  const ladder = TIERS.map((tier, i) => `<span><i style="background:${tier.bg}"></i>${tier.name} ${STEP + i * STEP}권</span>`).join('');
   const shown = states.filter(s => s.n > 0);
   const hero = count ? petCard(pet, n, true) : `<div class="pcard big locked"><div class="art">${eggSVG(null, 0)}</div><div class="cap"><b>???</b><small>책 1권이면 알이 나타나요</small></div></div>`;
   return `<section class="panel"><div class="hero">${hero}
     <div class="hero-info">${info}<p class="today-left">🥚 오늘 알이 더 자랄 수 있어요: <b>${left}번</b></p><div class="ladder">${ladder}</div></div></div></section>
-    <section class="panel"><h3>🏡 ${who(k)}의 친구들</h3><div class="shelf-pets">${shown.map(s => petCard(s.pet, s.n)).join('')}${shown.length < PETS.length ? petCard(null, 0) : ''}</div></section>`;
+    <section class="panel"><h3>🏡 ${who(k)}의 친구들</h3><div class="shelf-pets">${shown.map(s => petCard(s.pet, s.n)).join('')}${shown.length < order.length ? petCard(null, 0) : ''}</div></section>`;
 }
 
 function noteView(k) {
@@ -801,22 +842,23 @@ function openRead(opt) {
 
 function celebrate(before, rewarded) {
   const after = before + (rewarded ? 1 : 0);
+  const order = orderOf(kid());
   if (!rewarded) {
-    const { pet, n } = activePet(after);
+    const { pet, n } = activePet(after, order);
     openSheet(`<div class="celebrate"><h2>기록 완료! 📚</h2>${after ? petCard(pet, n, true) : ''}<p>오늘은 알이 충분히 자랐어요.<br>내일 또 읽으면 다시 자라요!</p><button class="btn primary big" data-act="close">좋아요</button></div>`);
     return;
   }
-  const index = Math.min(Math.floor((after - 1) / PER_PET), PETS.length - 1);
-  const pet = PETS[index], n = Math.min(PER_PET, after - index * PER_PET);
+  const index = Math.min(Math.floor((after - 1) / PER_PET), order.length - 1);
+  const pet = order[index], n = Math.min(PER_PET, after - index * PER_PET);
   let title, message;
-  if (after > PETS.length * PER_PET) { title = '전설의 독서왕! 👑'; message = `모든 친구가 다이아몬드예요. 알을 ${after}번 키웠어요!`; }
-  else if (n === 1) { title = index === 0 ? '신비한 알을 발견했어요!' : '새로운 알이 나타났어요!'; message = '책을 다섯 권 읽으면 알이 깨져요.'; }
-  else if (n < 5) { title = ['', '', '알에 무늬가 생겼어요!', '알이 흔들흔들!', '알에 금이 갔어요!'][n]; message = `부화까지 ${5 - n}권 남았어요.`; }
-  else if (n === 5) { title = `${pet.kind} ${pet.name} 탄생! 🎉`; message = index === 0 ? '에그부기의 주인공, 거북이 부기가 태어났어요!' : `알에서 ${pet.kind} ${iga(pet.name)} 나왔어요!`; }
-  else if ((n - 5) % 5 === 0) { const t = (n - 5) / 5; title = `${TIERS[t].name} 승급! ✨`; message = n === PER_PET ? `${iga(pet.name)} 최고 등급이 됐어요! ${after < PETS.length * PER_PET ? '다음 알이 열려요.' : ''}` : `${iga(pet.name)} ${TIERS[t].name} 등급이 됐어요!`; }
-  else { const { seg, next } = tierOf(n); title = '테두리 조각 획득!'; message = `${TIERS[next].name} 조각 ${seg}/5 · ${5 - seg}권 더 읽으면 승급해요.`; }
+  if (after > order.length * PER_PET) { title = '전설의 독서왕! 👑'; message = `모든 친구가 다이아몬드예요. 알을 ${after}번 키웠어요!`; }
+  else if (n === 1) { title = index === 0 ? '신비한 알을 발견했어요!' : '새로운 알이 나타났어요!'; message = index === 0 ? `책을 ${STEP}권 읽으면 알이 깨져요.` : `${STEP - 1}권만 더 읽으면 깨져요. 누가 나올까요?`; }
+  else if (n < STEP) { title = '알에 금이 갔어요! 흔들흔들'; message = `부화까지 ${STEP - n}권 남았어요.`; }
+  else if (n === STEP) { title = `${pet.kind} ${pet.name} 탄생! 🎉`; message = index === 0 ? '에그부기의 주인공, 거북이 부기가 태어났어요!' : `알에서 ${pet.kind} ${iga(pet.name)} 나왔어요!`; }
+  else if ((n - STEP) % STEP === 0) { const t = (n - STEP) / STEP; title = `${TIERS[t].name} 승급! ✨`; message = n === PER_PET ? `${iga(pet.name)} 최고 등급이 됐어요! ${after < order.length * PER_PET ? '다음 알이 열려요.' : ''}` : `${iga(pet.name)} ${TIERS[t].name} 등급이 됐어요!`; }
+  else { const { seg, next } = tierOf(n); title = '테두리 조각 획득!'; message = `${TIERS[next].name} 조각 ${seg}/${STEP} · ${STEP - seg}권 더 읽으면 승급해요.`; }
   const colors = ['#f5994a', '#ffd36e', '#7ee8a5', '#7ab8ff', '#c58bff', '#ff7aa2', '#4fb7ac'];
-  const confetti = n === 5 || (n > 5 && (n - 5) % 5 === 0)
+  const confetti = n === STEP || (n > STEP && (n - STEP) % STEP === 0)
     ? '<div class="confetti">' + Array.from({ length: 30 }, (_, i) => `<i style="left:${Math.random() * 100}%;background:${colors[i % colors.length]};animation-delay:${Math.random() * .6}s"></i>`).join('') + '</div>' : '';
   openSheet(`<div class="celebrate">${confetti}<h2>${title}</h2>${petCard(pet, n, true)}<p>${message}</p><button class="btn primary big" data-act="close">좋아요!</button></div>`);
 }
