@@ -288,12 +288,26 @@ main{max-width:1140px;margin:0 auto;padding:18px 16px 120px}
 const KEY = 'eggbugi.v1';
 const PER_PET = 30;
 // 첫 알에서는 늘 주인공 거북이 부기가 태어난다. 앞 친구가 다이아몬드가 되면 다음 알이 열린다.
-// 모두 알에서 태어나는 동물로 고른다. 이름은 받침 없이 끝내야 '○○가' 같은 문구가 자연스럽다.
+// 순서와 이름은 사용자가 정한 목록(art/애들 이름.txt)을 따른다. 그림은 art/{key}.png(긴 쪽 640px 투명 PNG), 원본은 art/originals/.
+// egg = 알 무늬 두 색(그 친구 몸 색을 미리 보여 준다), pattern = 무늬 모양(hex 육각 / waves 물결 / 나머지 점박이).
 const PETS = [
-  { key: 'turtle', name: '부기', kind: '거북이' },
-  { key: 'penguin', name: '펭구', kind: '아기 펭귄' },
-  { key: 'dino', name: '디노', kind: '아기 공룡' },
+  { key: 'turtle', name: '부기', kind: '거북이', egg: ['#8a5a2b', '#f0a24e'], pattern: 'hex' },
+  { key: 'penguin', name: '펭구', kind: '아기 펭귄', egg: ['#3d4352', '#8fcdf0'], pattern: 'waves' },
+  { key: 'peacock', name: '자기', kind: '꼬마 공작새', egg: ['#2a7fd4', '#2fbf9f'] },
+  { key: 'echidna', name: '두두', kind: '아기 가시두더지', egg: ['#7a4a2a', '#c99a6b'] },
+  { key: 'shark', name: '상구', kind: '아기 상어', egg: ['#2f7fd0', '#9fd0f5'], pattern: 'waves' },
+  { key: 'platypus', name: '너구', kind: '아기 오리너구리', egg: ['#8a5a3a', '#d9a066'] },
+  { key: 'duck', name: '오동', kind: '아기 오리', egg: ['#f2b800', '#ff9a3c'] },
+  { key: 'trex', name: '라노', kind: '아기 티라노', egg: ['#d94a3a', '#f6a07a'] },
+  { key: 'owl', name: '엉이', kind: '아기 부엉이', egg: ['#8a6040', '#f2c14e'] },
+  { key: 'crocodile', name: '아구', kind: '아기 악어', egg: ['#5aa83a', '#f2c14e'] },
+  { key: 'salamander', name: '도롱', kind: '노란무늬 도롱뇽', egg: ['#2a2a33', '#f5c800'] },
+  { key: 'octopus', name: '무니', kind: '아기 문어', egg: ['#e8669a', '#ffb3cc'], pattern: 'waves' },
+  { key: 'cobra', name: '코비', kind: '아기 코브라', egg: ['#8a5ac8', '#c9a8f0'] },
+  { key: 'chameleon', name: '멜로', kind: '아기 카멜레온', egg: ['#7cc84a', '#f2c14e'] },
 ];
+// 이름 뒤 조사: 받침이 있으면 '이', 없으면 '가' (오동이 / 부기가).
+const iga = word => { const code = word.charCodeAt(word.length - 1) - 0xac00; return word + (code >= 0 && code < 11172 && code % 28 ? '이' : '가'); };
 const TIERS = [
   { name: '나무', bg: 'repeating-linear-gradient(45deg,#9c6d36 0 6px,#be8f55 6px 12px)' },
   { name: '브론즈', bg: 'linear-gradient(135deg,#8a4b1f,#e0a06a,#8a4b1f)' },
@@ -369,17 +383,15 @@ function hex(cx, cy, r, fill, stroke = '#2f7a55') {
   return `<polygon points="${points}" fill="${fill}" stroke="${stroke}" stroke-width="3"/>`;
 }
 function eggSVG(key, stage) {
-  // 거북이 알 무늬는 부기 등딱지(주황·갈색 육각)를 미리 보여 준다.
-  // 펭귄 알은 차가운 바다 물결과 검은 점(펭구 몸 색)을 보여 준다.
-  const colors = { turtle: ['#8a5a2b', '#f0a24e'], penguin: ['#3d4352', '#8fcdf0'], dino: ['#6bbf3a', '#f6c443'] };
   let deco = '';
   if (!key) deco = '<text x="60" y="100" text-anchor="middle" font-size="46" font-weight="900" fill="#c9d3cf">?</text>';
   else if (stage >= 2) {
-    const [c1, c2] = colors[key];
-    if (key === 'turtle') deco = hex(60, 74, 13, c2, c1) + hex(36, 98, 9, c2, c1) + hex(84, 98, 9, c2, c1) + hex(60, 116, 8, c2, c1);
-    else if (key === 'dino') deco = [[42, 62, 8], [78, 70, 10], [52, 98, 9], [86, 104, 7], [64, 122, 5]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c1}" opacity=".85"/>`).join('');
-    else deco = [96, 116].map(y => `<path d="M16 ${y} q11 -8 22 0 t22 0 t22 0 t22 0" stroke="${c2}" stroke-width="6" fill="none" stroke-linecap="round"/>`).join('')
+    const pet = PETS.find(p => p.key === key), [c1, c2] = pet.egg;
+    if (pet.pattern === 'hex') deco = hex(60, 74, 13, c2, c1) + hex(36, 98, 9, c2, c1) + hex(84, 98, 9, c2, c1) + hex(60, 116, 8, c2, c1);
+    else if (pet.pattern === 'waves') deco = [96, 116].map(y => `<path d="M16 ${y} q11 -8 22 0 t22 0 t22 0 t22 0" stroke="${c2}" stroke-width="6" fill="none" stroke-linecap="round"/>`).join('')
       + [[46, 58, 6], [74, 66, 8], [58, 80, 5]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c1}"/>`).join('');
+    else deco = [[42, 62, 8, c1], [78, 70, 10, c2], [52, 98, 9, c2], [86, 104, 7, c1], [64, 122, 5, c1], [30, 86, 4, c2]]
+      .map(([x, y, r, c]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" opacity=".9"/>`).join('');
   }
   const crackPath = 'M16 70 l12 10 l10 -9 l11 12 l10 -10 l11 11 l10 -9 l12 8';
   const crack = stage >= 4 ? `<path d="${crackPath}" stroke="#ffd84d" stroke-width="10" fill="none" stroke-linejoin="round" opacity=".9"/><path d="${crackPath}" stroke="#7a5a2a" stroke-width="3" fill="none" stroke-linejoin="round"/>` : '';
@@ -387,29 +399,9 @@ function eggSVG(key, stage) {
     + `<path d="M60 6 C94 6 114 62 114 90 C114 120 90 136 60 136 C30 136 6 120 6 90 C6 62 26 6 60 6Z" fill="${key ? '#fffaf0' : '#f2f5f4'}" stroke="${key ? '#ecdcbc' : '#d5dfdb'}" stroke-width="3"/>`
     + deco + crack + '<ellipse cx="40" cy="42" rx="9" ry="15" fill="#fff" opacity=".85" transform="rotate(20 40 42)"/></svg>';
 }
-// 주인공 부기는 사용자가 만든 그림(art/boogi.png, 긴 쪽 640px 투명 PNG)을 쓴다. 원본은 art/boogi-original.png.
-function turtleSVG() {
-  return '<img src="art/boogi.png" alt="거북이 부기" draggable="false">';
-}
-// 두 번째 친구 펭구: 사용자가 만든 그림(art/penguin.png, 긴 쪽 640px 투명 PNG). 원본은 art/penguin-original.png.
-function penguinSVG() {
-  return '<img src="art/penguin.png" alt="아기 펭귄 펭구" draggable="false">';
-}
-function dinoSVG() {
-  return '<svg viewBox="0 0 160 140" width="160" height="140" role="img" aria-label="아기 공룡 디노">'
-    + '<ellipse cx="80" cy="128" rx="54" ry="7" fill="#000" opacity=".08"/>'
-    + '<path d="M44 100 Q12 106 8 84 Q24 96 48 88Z" fill="#6bbf3a"/>'
-    + '<path d="M50 72 l8 -18 l8 14 l8 -18 l8 14 l8 -16 l6 18Z" fill="#f6c443"/>'
-    + '<rect x="56" y="112" width="15" height="16" rx="7" fill="#5aa62f"/><rect x="90" y="112" width="15" height="16" rx="7" fill="#5aa62f"/>'
-    + '<ellipse cx="78" cy="94" rx="40" ry="32" fill="#6bbf3a"/>'
-    + '<ellipse cx="86" cy="104" rx="22" ry="18" fill="#c9eea0"/>'
-    + '<circle cx="116" cy="62" r="24" fill="#6bbf3a"/>'
-    + '<circle cx="123" cy="56" r="5" fill="#1f2a24"/><circle cx="124.6" cy="54.4" r="1.7" fill="#fff"/>'
-    + '<circle cx="130" cy="69" r="4" fill="#ff9aa2" opacity=".75"/>'
-    + '<path d="M118 72 q8 6 16 0" stroke="#1f2a24" stroke-width="2.5" fill="none" stroke-linecap="round"/>'
-    + '<path d="M104 92 q8 2 11 -5" stroke="#5aa62f" stroke-width="7" stroke-linecap="round" fill="none"/></svg>';
-}
-const CREATURES = { turtle: turtleSVG, penguin: penguinSVG, dino: dinoSVG };
+// 친구 그림은 모두 사용자가 만든 그림이다. 주인공 부기는 로고·첫 화면에도 쓴다.
+const creatureImg = pet => `<img src="art/${pet.key === 'turtle' ? 'boogi' : pet.key}.png" alt="${pet.kind} ${pet.name}" draggable="false">`;
+const turtleSVG = () => creatureImg(PETS[0]);
 const WING = '<svg class="wing {side}" viewBox="0 0 50 40"><path d="M48 20 C30 0 8 2 2 8 C12 12 6 16 2 20 C12 22 8 28 4 32 C20 38 38 34 48 20Z" fill="#bff5e6" stroke="#1fa58a" stroke-width="2"/></svg>';
 const CROWN = '<svg class="crown" viewBox="0 0 60 40"><path d="M6 34 L4 10 L18 22 L30 4 L42 22 L56 10 L54 34Z" fill="#ffd36e" stroke="#c99a1a" stroke-width="2.5" stroke-linejoin="round"/><circle cx="30" cy="25" r="4" fill="#ff7aa2"/></svg>';
 
@@ -423,7 +415,7 @@ function petCard(pet, n, big = false) {
     `<i class="seg ${side}" style="background:${(i < seg ? TIERS[next] : TIERS[t]).bg}">${side === 'emblem' ? t + 1 : ''}</i>`).join('');
   const extra = (t >= 4 ? WING.replace('{side}', 'l') + WING.replace('{side}', 'r') : '') + (t >= 5 ? CROWN : '');
   const left = n < PER_PET ? ` · ${TIERS[next].name}까지 ${5 - seg}권` : ' · 최고 등급!';
-  return `<div class="pcard t${t}${size}">${segs}${extra}<div class="art">${CREATURES[pet.key]()}</div><div class="cap"><b>${pet.kind} ${pet.name}</b><small>Lv.${t + 1} ${TIERS[t].name}${left}</small></div></div>`;
+  return `<div class="pcard t${t}${size}">${segs}${extra}<div class="art">${creatureImg(pet)}</div><div class="cap"><b>${pet.kind} ${pet.name}</b><small>Lv.${t + 1} ${TIERS[t].name}${left}</small></div></div>`;
 }
 const stars = n => `<span class="st">${'★'.repeat(n)}<i>${'★'.repeat(5 - n)}</i></span>`;
 const kidButton = (p, big = false) =>
@@ -820,8 +812,8 @@ function celebrate(before, rewarded) {
   if (after > PETS.length * PER_PET) { title = '전설의 독서왕! 👑'; message = `모든 친구가 다이아몬드예요. 알을 ${after}번 키웠어요!`; }
   else if (n === 1) { title = index === 0 ? '신비한 알을 발견했어요!' : '새로운 알이 나타났어요!'; message = '책을 다섯 권 읽으면 알이 깨져요.'; }
   else if (n < 5) { title = ['', '', '알에 무늬가 생겼어요!', '알이 흔들흔들!', '알에 금이 갔어요!'][n]; message = `부화까지 ${5 - n}권 남았어요.`; }
-  else if (n === 5) { title = `${pet.kind} ${pet.name} 탄생! 🎉`; message = index === 0 ? '에그부기의 주인공, 거북이 부기가 태어났어요!' : `알에서 ${pet.kind} ${pet.name}가 나왔어요!`; }
-  else if ((n - 5) % 5 === 0) { const t = (n - 5) / 5; title = `${TIERS[t].name} 승급! ✨`; message = n === PER_PET ? `${pet.name}가 최고 등급이 됐어요! 다음 알이 열려요.` : `${pet.name}가 ${TIERS[t].name} 등급이 됐어요!`; }
+  else if (n === 5) { title = `${pet.kind} ${pet.name} 탄생! 🎉`; message = index === 0 ? '에그부기의 주인공, 거북이 부기가 태어났어요!' : `알에서 ${pet.kind} ${iga(pet.name)} 나왔어요!`; }
+  else if ((n - 5) % 5 === 0) { const t = (n - 5) / 5; title = `${TIERS[t].name} 승급! ✨`; message = n === PER_PET ? `${iga(pet.name)} 최고 등급이 됐어요! ${after < PETS.length * PER_PET ? '다음 알이 열려요.' : ''}` : `${iga(pet.name)} ${TIERS[t].name} 등급이 됐어요!`; }
   else { const { seg, next } = tierOf(n); title = '테두리 조각 획득!'; message = `${TIERS[next].name} 조각 ${seg}/5 · ${5 - seg}권 더 읽으면 승급해요.`; }
   const colors = ['#f5994a', '#ffd36e', '#7ee8a5', '#7ab8ff', '#c58bff', '#ff7aa2', '#4fb7ac'];
   const confetti = n === 5 || (n > 5 && (n - 5) % 5 === 0)
